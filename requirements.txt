@@ -1,0 +1,4 @@
+# Bakuretsu Review Card Generator Dependencies
+Pillow>=10.0.0
+requests>=2.28.0
+customtkinter>=5.2.0
