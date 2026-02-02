@@ -12,7 +12,7 @@ A personal toolkit for managing and enhancing my game, movie, and anime reviews.
 
 Generate beautiful, branded review card images instantly for your games, movies, and anime. Perfect for sharing on social media alongside your Letterboxd or Backloggd reviews.
 
-![Demo](Readme%20images/1.gif)
+<img src="Readme%20images/1.gif" alt="Bakuretsu Review Card Generator UI Demo - showing the interface with title input, score slider, review text area, platform selection, and live card preview" width="700">
 
 #### Features
 
@@ -40,13 +40,13 @@ Choose from 8 built-in color palettes or create your own custom colors:
 
 or any custom colors/dimensions
 
-![Styles](Readme%20images/Styles.png)
+<img src="Readme%20images/Styles.png" alt="Multiple review card examples showing different color palette styles - Bakuretsu Dark, Midnight Blue, Ocean, and more" width="650">
 
 #### Example
 
 Here's a review card generated for **OMORI**:
 
-![Omori Example](Readme%20images/Omori.png)
+<img src="Readme%20images/Omori.png" alt="Example review card for OMORI game showing cover art, 9.0 score, review text, and Backloggd branding" width="550">
 
 #### Quick Start
 
