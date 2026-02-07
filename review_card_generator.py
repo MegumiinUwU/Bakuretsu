@@ -479,15 +479,6 @@ class ReviewCardGenerator:
                 (padding, platform_y)
             )
         
-        # Draw Bakuretsu branding (bottom right)
-        branding_text = "BAKURETSU"
-        draw.text(
-            (self.style.width - padding, self.style.height - padding),
-            branding_text,
-            font=self.style.platform_font,
-            fill=self.style.accent_color,
-            anchor="rb"
-        )
         
         # Save if output path provided
         if output_path:
