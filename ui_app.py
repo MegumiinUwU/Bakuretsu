@@ -71,8 +71,16 @@ COLOR_PALETTES = {
         "primary": "#edf2f4",
         "secondary": "#e056fd",
         "accent": "#00d9ff"
+    },
+    "Ramadan": {
+        "background": "#0a0e2a",
+        "primary": "#ffffff",
+        "secondary": "#c9a961",
+        "accent": "#ffd700"
     }
 }
+
+THEMED_PALETTES = {"Ramadan"}
 
 
 def hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
@@ -492,6 +500,9 @@ class ReviewCardApp(ctk.CTk):
         
         bg_rgb = hex_to_rgb(self.bg_color_btn.get_color())
         
+        palette_name = self.palette_var.get()
+        theme = palette_name.lower() if palette_name in THEMED_PALETTES else None
+        
         return CardStyle(
             width=width,
             height=height,
@@ -499,7 +510,8 @@ class ReviewCardApp(ctk.CTk):
             primary_color=hex_to_rgb(self.primary_color_btn.get_color()),
             secondary_color=hex_to_rgb(self.secondary_color_btn.get_color()),
             accent_color=hex_to_rgb(self.accent_color_btn.get_color()),
-            corner_radius=radius
+            corner_radius=radius,
+            theme=theme
         )
     
     def _validate_inputs(self) -> bool:

@@ -12,6 +12,8 @@ import requests
 from io import BytesIO
 import textwrap
 import os
+import math
+import random
 
 
 class Platform(Enum):
@@ -135,6 +137,7 @@ class CardStyle:
         padding: int = 40,
         cover_width: int = 300,
         corner_radius: int = 20,
+        theme: Optional[str] = None,
     ):
         self.width = width
         self.height = height
@@ -151,6 +154,7 @@ class CardStyle:
         self.padding = padding
         self.cover_width = cover_width
         self.corner_radius = corner_radius
+        self.theme = theme
         
         # Load fonts
         self._load_fonts()
@@ -356,6 +360,83 @@ class ReviewCardGenerator:
             anchor="lm"
         )
     
+    def _draw_ramadan_decorations(self, card: Image.Image, draw: ImageDraw.Draw):
+        """Draw a starry night sky with a crescent moon overlay."""
+        w, h = card.size
+        rng = random.Random(42)
+
+        # --- Stars ---
+        star_count = max(40, (w * h) // 8000)
+        for _ in range(star_count):
+            sx = rng.randint(0, w - 1)
+            sy = rng.randint(0, h - 1)
+            brightness = rng.randint(160, 255)
+            radius = rng.choice([1, 1, 1, 2, 2, 3])
+            alpha = rng.randint(120, 255)
+            color = (brightness, brightness, rng.randint(brightness, 255), alpha)
+            draw.ellipse(
+                [(sx - radius, sy - radius), (sx + radius, sy + radius)],
+                fill=color,
+            )
+
+        # Sparkle stars (4-pointed) scattered sparsely
+        for _ in range(star_count // 6):
+            sx = rng.randint(0, w - 1)
+            sy = rng.randint(0, h - 1)
+            length = rng.randint(4, 9)
+            col = (255, 255, rng.randint(200, 255), rng.randint(180, 255))
+            draw.line([(sx - length, sy), (sx + length, sy)], fill=col, width=1)
+            draw.line([(sx, sy - length), (sx, sy + length)], fill=col, width=1)
+
+        # --- Crescent Moon ---
+        moon_radius = int(min(w, h) * 0.12)
+        margin = self.style.padding + moon_radius
+        moon_cx = w - margin
+        moon_cy = margin
+
+        moon_layer = Image.new("RGBA", card.size, (0, 0, 0, 0))
+        moon_draw = ImageDraw.Draw(moon_layer)
+
+        # Outer (full) circle – golden glow
+        glow_r = moon_radius + 6
+        moon_draw.ellipse(
+            [(moon_cx - glow_r, moon_cy - glow_r),
+             (moon_cx + glow_r, moon_cy + glow_r)],
+            fill=(255, 215, 0, 40),
+        )
+
+        # Solid moon circle
+        moon_draw.ellipse(
+            [(moon_cx - moon_radius, moon_cy - moon_radius),
+             (moon_cx + moon_radius, moon_cy + moon_radius)],
+            fill=(255, 215, 0, 230),
+        )
+
+        # Cut-out circle to form the crescent (offset to upper-right)
+        cut_offset_x = int(moon_radius * 0.55)
+        cut_offset_y = int(-moon_radius * 0.2)
+        cut_r = int(moon_radius * 0.85)
+        moon_draw.ellipse(
+            [(moon_cx + cut_offset_x - cut_r, moon_cy + cut_offset_y - cut_r),
+             (moon_cx + cut_offset_x + cut_r, moon_cy + cut_offset_y + cut_r)],
+            fill=(0, 0, 0, 0),
+        )
+
+        card.alpha_composite(moon_layer)
+
+        # Small decorative stars near the crescent
+        for _ in range(5):
+            angle = rng.uniform(0, 2 * math.pi)
+            dist = moon_radius + rng.randint(15, 40)
+            sx = int(moon_cx + dist * math.cos(angle))
+            sy = int(moon_cy + dist * math.sin(angle))
+            if 0 <= sx < w and 0 <= sy < h:
+                r = rng.choice([2, 3])
+                draw.ellipse(
+                    [(sx - r, sy - r), (sx + r, sy + r)],
+                    fill=(255, 223, 100, 220),
+                )
+
     def generate(
         self, 
         review: ReviewData,
@@ -381,6 +462,11 @@ class ReviewCardGenerator:
             self.style.background_color
         )
         draw = ImageDraw.Draw(card)
+        
+        # Apply theme decorations
+        if self.style.theme == "ramadan":
+            self._draw_ramadan_decorations(card, draw)
+            draw = ImageDraw.Draw(card)
         
         # Calculate layout
         padding = self.style.padding
