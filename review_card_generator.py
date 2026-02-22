@@ -130,7 +130,7 @@ class CardStyle:
         accent_color: tuple[int, int, int] = (236, 72, 153),
         title_font_size: int = 48,
         score_font_size: int = 72,
-        review_font_size: int = 24,
+        review_font_size: int = 28,
         platform_font_size: int = 20,
         font_path: Optional[str] = None,
         bold_font_path: Optional[str] = None,
@@ -161,35 +161,46 @@ class CardStyle:
     
     def _load_fonts(self):
         """Load fonts with fallback to default."""
+        def _try_load(paths, size):
+            for p in paths:
+                try:
+                    return ImageFont.truetype(p, size)
+                except (OSError, IOError):
+                    continue
+            return None
+
+        system_fonts = [
+            "arial.ttf", "Arial.ttf",
+            "segoeui.ttf", "Segoe UI.ttf",
+            "Helvetica.ttf", "DejaVuSans.ttf",
+            "C:/Windows/Fonts/segoeui.ttf",
+            "C:/Windows/Fonts/arial.ttf",
+        ]
+        system_bold_fonts = [
+            "arialbd.ttf",
+            "segoeuib.ttf",
+            "Helvetica-Bold.ttf", "DejaVuSans-Bold.ttf",
+            "C:/Windows/Fonts/segoeuib.ttf",
+            "C:/Windows/Fonts/arialbd.ttf",
+        ]
+
         try:
             if self.font_path and Path(self.font_path).exists():
+                bold = self.bold_font_path or self.font_path
                 self.title_font = ImageFont.truetype(self.font_path, self.title_font_size)
-                self.score_font = ImageFont.truetype(self.bold_font_path or self.font_path, self.score_font_size)
-                self.review_font = ImageFont.truetype(self.font_path, self.review_font_size)
+                self.score_font = ImageFont.truetype(bold, self.score_font_size)
+                self.review_font = ImageFont.truetype(bold, self.review_font_size)
                 self.platform_font = ImageFont.truetype(self.font_path, self.platform_font_size)
             else:
-                # Try common system fonts
-                system_fonts = [
-                    "arial.ttf", "Arial.ttf",
-                    "segoeui.ttf", "Segoe UI.ttf",
-                    "Helvetica.ttf", "DejaVuSans.ttf",
-                    "C:/Windows/Fonts/segoeui.ttf",
-                    "C:/Windows/Fonts/arial.ttf",
-                ]
-                font_loaded = False
-                for font_name in system_fonts:
-                    try:
-                        self.title_font = ImageFont.truetype(font_name, self.title_font_size)
-                        self.score_font = ImageFont.truetype(font_name, self.score_font_size)
-                        self.review_font = ImageFont.truetype(font_name, self.review_font_size)
-                        self.platform_font = ImageFont.truetype(font_name, self.platform_font_size)
-                        font_loaded = True
-                        break
-                    except (OSError, IOError):
-                        continue
-                
-                if not font_loaded:
-                    # Use default bitmap font as last resort
+                regular = _try_load(system_fonts, self.title_font_size)
+                if regular:
+                    self.title_font = regular
+                    self.score_font = _try_load(system_bold_fonts, self.score_font_size) or \
+                                      _try_load(system_fonts, self.score_font_size) or ImageFont.load_default()
+                    self.review_font = _try_load(system_bold_fonts, self.review_font_size) or \
+                                       _try_load(system_fonts, self.review_font_size) or ImageFont.load_default()
+                    self.platform_font = _try_load(system_fonts, self.platform_font_size) or ImageFont.load_default()
+                else:
                     self.title_font = ImageFont.load_default()
                     self.score_font = ImageFont.load_default()
                     self.review_font = ImageFont.load_default()
@@ -392,7 +403,7 @@ class ReviewCardGenerator:
         moon_radius = int(min(w, h) * 0.12)
         margin = self.style.padding + moon_radius
         moon_cx = w - margin
-        moon_cy = margin
+        moon_cy = h - margin
 
         moon_layer = Image.new("RGBA", card.size, (0, 0, 0, 0))
         moon_draw = ImageDraw.Draw(moon_layer)
