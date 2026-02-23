@@ -3,7 +3,7 @@ Bakuretsu Review Card Generator
 Generates branded review card images for games and movies.
 """
 
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
+from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageChops
 from enum import Enum
 from dataclasses import dataclass
 from pathlib import Path
@@ -77,6 +77,24 @@ class ReviewData:
             raise ValueError("Score must be between 0 and 10")
         if not self.review_text or not self.review_text.strip():
             raise ValueError("Review text cannot be empty")
+        return True
+
+
+@dataclass
+class TextlessReviewData:
+    """Data container for a textless (visual-only) review with star rating."""
+    title: str
+    stars: float
+    content_type: ContentType
+    cover_image: Optional[Union[str, Path, Image.Image]] = None
+    platform: Platform = Platform.NONE
+    platform_username: str = ""
+
+    def validate(self) -> bool:
+        if not self.title or not self.title.strip():
+            raise ValueError("Title cannot be empty")
+        if not 0.5 <= self.stars <= 5.0:
+            raise ValueError("Stars must be between 0.5 and 5")
         return True
 
 
@@ -586,6 +604,201 @@ class ReviewCardGenerator:
         return card
 
 
+class TextlessReviewCardGenerator:
+    """Generator for textless review card images with star ratings."""
+
+    def __init__(self, style: Optional[CardStyle] = None):
+        self.style = style or CardStyle(width=1080, height=1080)
+        self._base = ReviewCardGenerator(self.style)
+
+    @staticmethod
+    def _star_polygon(
+        cx: float, cy: float, outer_r: float, inner_r: float = None
+    ) -> list[tuple[float, float]]:
+        """Calculate vertices of a 5-pointed star."""
+        if inner_r is None:
+            inner_r = outer_r * 0.38
+        points = []
+        for i in range(10):
+            angle = math.radians(-90 + i * 36)
+            r = outer_r if i % 2 == 0 else inner_r
+            points.append((cx + r * math.cos(angle), cy + r * math.sin(angle)))
+        return points
+
+    def _create_star_image(
+        self, img_size: int, outer_r: float, color: tuple
+    ) -> Image.Image:
+        """Create a single filled star image."""
+        img = Image.new("RGBA", (img_size, img_size), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        cx, cy = img_size // 2, img_size // 2
+        points = self._star_polygon(cx, cy, outer_r)
+        draw.polygon(points, fill=color)
+        return img
+
+    def _create_half_star_image(
+        self, img_size: int, outer_r: float, fill_color: tuple, empty_color: tuple
+    ) -> Image.Image:
+        """Create a half-filled star (left half filled, right half empty)."""
+        cx, cy = img_size // 2, img_size // 2
+        points = self._star_polygon(cx, cy, outer_r)
+
+        base = Image.new("RGBA", (img_size, img_size), (0, 0, 0, 0))
+        base_draw = ImageDraw.Draw(base)
+        base_draw.polygon(points, fill=empty_color)
+
+        filled = Image.new("RGBA", (img_size, img_size), (0, 0, 0, 0))
+        filled_draw = ImageDraw.Draw(filled)
+        filled_draw.polygon(points, fill=fill_color)
+
+        _, _, _, alpha = filled.split()
+        mask = Image.new("L", (img_size, img_size), 0)
+        mask_draw = ImageDraw.Draw(mask)
+        mask_draw.rectangle([(0, 0), (cx, img_size)], fill=255)
+        filled.putalpha(ImageChops.multiply(alpha, mask))
+
+        base.alpha_composite(filled)
+        return base
+
+    def _draw_star_rating(
+        self,
+        card: Image.Image,
+        stars: float,
+        max_stars: int,
+        center_x: int,
+        center_y: int,
+        star_outer_r: int,
+    ):
+        """Draw a star rating centered at the given position."""
+        fill_color = (*self.style.accent_color, 255)
+        empty_color = (*self.style.secondary_color, 60)
+
+        img_size = int(star_outer_r * 2.5)
+        spacing = int(star_outer_r * 2.8)
+        total_width = (max_stars - 1) * spacing
+        start_x = center_x - total_width // 2
+
+        full_stars = int(stars)
+        has_half = (stars - full_stars) >= 0.25
+
+        for i in range(max_stars):
+            sx = start_x + i * spacing
+            paste_x = sx - img_size // 2
+            paste_y = center_y - img_size // 2
+
+            if i < full_stars:
+                star_img = self._create_star_image(img_size, star_outer_r, fill_color)
+            elif i == full_stars and has_half:
+                star_img = self._create_half_star_image(
+                    img_size, star_outer_r, fill_color, empty_color
+                )
+            else:
+                star_img = self._create_star_image(img_size, star_outer_r, empty_color)
+
+            card.alpha_composite(star_img, (paste_x, paste_y))
+
+    def _draw_cover_placeholder(
+        self, draw: ImageDraw.Draw, x: int, y: int, w: int, h: int, center_x: int
+    ):
+        """Draw a placeholder rectangle when no cover image is available."""
+        draw.rounded_rectangle(
+            [(x, y), (x + w, y + h)], radius=15, fill=(40, 40, 50, 255)
+        )
+        draw.text(
+            (center_x, y + h // 2),
+            "No Cover",
+            font=self.style.review_font,
+            fill=self.style.secondary_color,
+            anchor="mm",
+        )
+
+    def generate(
+        self,
+        review: TextlessReviewData,
+        output_path: Optional[Union[str, Path]] = None,
+    ) -> Image.Image:
+        """Generate a textless review card image with star rating."""
+        review.validate()
+
+        card = self._base._create_rounded_rectangle(
+            (self.style.width, self.style.height),
+            self.style.corner_radius,
+            self.style.background_color,
+        )
+        draw = ImageDraw.Draw(card)
+
+        if self.style.theme == "ramadan":
+            self._base._draw_ramadan_decorations(card, draw)
+            draw = ImageDraw.Draw(card)
+
+        padding = self.style.padding
+        center_x = self.style.width // 2
+        card_min = min(self.style.width, self.style.height)
+
+        cover_w = int(card_min * 0.48)
+        cover_h = int(cover_w * 1.4)
+
+        star_outer_r = max(15, int(card_min * 0.028))
+        star_area_h = int(star_outer_r * 2.5)
+
+        title_lines = self._base._wrap_text(
+            review.title, self.style.title_font, self.style.width - padding * 2
+        )
+        title_line_count = min(2, len(title_lines))
+        line_spacing = self.style.title_font_size + 8
+        title_h = title_line_count * line_spacing
+
+        gap = int(card_min * 0.025)
+        total_h = title_h + gap + cover_h + gap + star_area_h
+        start_y = max(padding, (self.style.height - total_h) // 2)
+
+        title_y = start_y
+        for line in title_lines[:2]:
+            draw.text(
+                (center_x, title_y),
+                line,
+                font=self.style.title_font,
+                fill=self.style.primary_color,
+                anchor="mt",
+            )
+            title_y += line_spacing
+
+        cover_y = start_y + title_h + gap
+        cover_x = center_x - cover_w // 2
+
+        if review.cover_image:
+            try:
+                cover = ImageLoader.load(review.cover_image)
+                cover_rounded = self._base._create_cover_with_rounded_corners(
+                    cover, cover_w, cover_h, 15
+                )
+                card.paste(cover_rounded, (cover_x, cover_y), cover_rounded)
+            except Exception:
+                self._draw_cover_placeholder(
+                    draw, cover_x, cover_y, cover_w, cover_h, center_x
+                )
+        else:
+            self._draw_cover_placeholder(
+                draw, cover_x, cover_y, cover_w, cover_h, center_x
+            )
+
+        stars_y = cover_y + cover_h + gap + star_area_h // 2
+        self._draw_star_rating(card, review.stars, 5, center_x, stars_y, star_outer_r)
+
+        if review.platform != Platform.NONE:
+            platform_y = self.style.height - padding - 32
+            self._base._draw_platform_branding(
+                draw, card, review.platform, review.platform_username, (padding, platform_y)
+            )
+
+        if output_path:
+            output_path = Path(output_path)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            card.save(output_path, "PNG")
+
+        return card
+
+
 def create_review_card(
     title: str,
     score: float,
@@ -625,6 +838,45 @@ def create_review_card(
     )
     
     generator = ReviewCardGenerator(style)
+    return generator.generate(review, output_path)
+
+
+def create_textless_review_card(
+    title: str,
+    stars: float,
+    content_type: str = "game",
+    cover_image: Optional[str] = None,
+    platform: str = "none",
+    platform_username: str = "",
+    output_path: Optional[str] = None,
+    style: Optional[CardStyle] = None,
+) -> Image.Image:
+    """
+    Convenience function to create a textless review card with star rating.
+
+    Args:
+        title: Name of the game or movie
+        stars: Star rating (0.5-5.0 in 0.5 increments)
+        content_type: "game" or "movie"
+        cover_image: URL or file path to cover image
+        platform: "none", "backloggd", or "letterboxd"
+        platform_username: Username on the platform
+        output_path: Optional path to save the image
+        style: Optional CardStyle for customization
+
+    Returns:
+        PIL Image object of the generated card
+    """
+    review = TextlessReviewData(
+        title=title,
+        stars=stars,
+        content_type=ContentType(content_type.lower()),
+        cover_image=cover_image,
+        platform=Platform(platform.lower()),
+        platform_username=platform_username,
+    )
+
+    generator = TextlessReviewCardGenerator(style)
     return generator.generate(review, output_path)
 
 

@@ -13,12 +13,15 @@ import threading
 
 from review_card_generator import (
     create_review_card,
+    create_textless_review_card,
     CardStyle,
     ReviewCardGenerator,
+    TextlessReviewCardGenerator,
     ReviewData,
+    TextlessReviewData,
     Platform,
     ContentType,
-    ImageLoader
+    ImageLoader,
 )
 
 
@@ -153,6 +156,7 @@ class ReviewCardApp(ctk.CTk):
         ctk.set_default_color_theme("blue")
         
         # Variables
+        self.generator_mode = "review"
         self.cover_image_path: Optional[str] = None
         self.generated_card: Optional[Image.Image] = None
         self.preview_photo: Optional[ImageTk.PhotoImage] = None
@@ -185,6 +189,21 @@ class ReviewCardApp(ctk.CTk):
     
     def _create_input_panel(self):
         """Create the review input section."""
+        # Generator Mode Selector
+        ctk.CTkLabel(
+            self.left_panel, text="Generator",
+            font=ctk.CTkFont(size=14, weight="bold")
+        ).pack(anchor="w", pady=(10, 5))
+
+        self.mode_var = ctk.StringVar(value="Review Card")
+        self.mode_selector = ctk.CTkSegmentedButton(
+            self.left_panel,
+            values=["Review Card", "Textless Review"],
+            variable=self.mode_var,
+            command=self._on_mode_change,
+        )
+        self.mode_selector.pack(fill="x", pady=(0, 20))
+
         # Header
         header = ctk.CTkLabel(
             self.left_panel,
@@ -192,7 +211,7 @@ class ReviewCardApp(ctk.CTk):
             font=ctk.CTkFont(size=24, weight="bold")
         )
         header.pack(pady=(10, 20), anchor="w")
-        
+
         # Title
         ctk.CTkLabel(self.left_panel, text="Title", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w")
         self.title_entry = ctk.CTkEntry(
@@ -202,13 +221,20 @@ class ReviewCardApp(ctk.CTk):
             font=ctk.CTkFont(size=14)
         )
         self.title_entry.pack(fill="x", pady=(5, 15))
-        
-        # Score
-        ctk.CTkLabel(self.left_panel, text="Score (0-10)", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w")
-        
-        score_frame = ctk.CTkFrame(self.left_panel, fg_color="transparent")
+
+        # === Mode-specific inputs container ===
+        self.mode_inputs_frame = ctk.CTkFrame(self.left_panel, fg_color="transparent")
+        self.mode_inputs_frame.pack(fill="x")
+
+        # -- Review Card mode inputs --
+        self.review_inputs = ctk.CTkFrame(self.mode_inputs_frame, fg_color="transparent")
+        self.review_inputs.pack(fill="x")
+
+        ctk.CTkLabel(self.review_inputs, text="Score (0-10)", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w")
+
+        score_frame = ctk.CTkFrame(self.review_inputs, fg_color="transparent")
         score_frame.pack(fill="x", pady=(5, 15))
-        
+
         self.score_var = ctk.DoubleVar(value=7.0)
         self.score_slider = ctk.CTkSlider(
             score_frame,
@@ -219,7 +245,7 @@ class ReviewCardApp(ctk.CTk):
             command=self._update_score_label
         )
         self.score_slider.pack(side="left", fill="x", expand=True, padx=(0, 10))
-        
+
         self.score_label = ctk.CTkLabel(
             score_frame,
             text="7.0",
@@ -227,36 +253,65 @@ class ReviewCardApp(ctk.CTk):
             width=50
         )
         self.score_label.pack(side="right")
-        
-        # Review Text
-        ctk.CTkLabel(self.left_panel, text="Review", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w")
+
+        ctk.CTkLabel(self.review_inputs, text="Review", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w")
         self.review_text = ctk.CTkTextbox(
-            self.left_panel,
+            self.review_inputs,
             height=150,
             font=ctk.CTkFont(size=13)
         )
         self.review_text.pack(fill="x", pady=(5, 15))
-        
+
+        # -- Textless Review mode inputs --
+        self.textless_inputs = ctk.CTkFrame(self.mode_inputs_frame, fg_color="transparent")
+        # Hidden initially; shown when user switches mode
+
+        ctk.CTkLabel(self.textless_inputs, text="Star Rating", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w")
+
+        stars_frame = ctk.CTkFrame(self.textless_inputs, fg_color="transparent")
+        stars_frame.pack(fill="x", pady=(5, 15))
+
+        self.stars_var = ctk.DoubleVar(value=4.0)
+        self.stars_slider = ctk.CTkSlider(
+            stars_frame,
+            from_=0.5,
+            to=5.0,
+            number_of_steps=9,
+            variable=self.stars_var,
+            command=self._update_stars_label,
+        )
+        self.stars_slider.pack(side="left", fill="x", expand=True, padx=(0, 10))
+
+        self.stars_label = ctk.CTkLabel(
+            stars_frame,
+            text="★★★★☆  4.0",
+            font=ctk.CTkFont(size=16, weight="bold"),
+            text_color="#ffd700",
+            width=140,
+        )
+        self.stars_label.pack(side="right")
+
+        # === Common inputs ===
         # Content Type
         ctk.CTkLabel(self.left_panel, text="Content Type", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w")
         self.content_type_var = ctk.StringVar(value="game")
         content_frame = ctk.CTkFrame(self.left_panel, fg_color="transparent")
         content_frame.pack(fill="x", pady=(5, 15))
-        
+
         ctk.CTkRadioButton(
             content_frame,
             text="Game",
             variable=self.content_type_var,
             value="game"
         ).pack(side="left", padx=(0, 20))
-        
+
         ctk.CTkRadioButton(
             content_frame,
             text="Movie",
             variable=self.content_type_var,
             value="movie"
         ).pack(side="left")
-        
+
         # Platform
         ctk.CTkLabel(self.left_panel, text="Platform", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w")
         self.platform_var = ctk.StringVar(value="none")
@@ -268,11 +323,11 @@ class ReviewCardApp(ctk.CTk):
             height=40
         )
         self.platform_menu.pack(fill="x", pady=(5, 10))
-        
+
         # Username (initially hidden)
         self.username_frame = ctk.CTkFrame(self.left_panel, fg_color="transparent")
         self.username_frame.pack(fill="x", pady=(0, 15))
-        
+
         ctk.CTkLabel(self.username_frame, text="Username", font=ctk.CTkFont(size=14)).pack(anchor="w")
         self.username_entry = ctk.CTkEntry(
             self.username_frame,
@@ -280,21 +335,21 @@ class ReviewCardApp(ctk.CTk):
             height=35
         )
         self.username_entry.pack(fill="x", pady=(5, 0))
-        self.username_frame.pack_forget()  # Hide initially
-        
+        self.username_frame.pack_forget()
+
         # Cover Image
         ctk.CTkLabel(self.left_panel, text="Cover Image", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w")
-        
+
         cover_frame = ctk.CTkFrame(self.left_panel, fg_color="transparent")
         cover_frame.pack(fill="x", pady=(5, 10))
-        
+
         self.cover_entry = ctk.CTkEntry(
             cover_frame,
             placeholder_text="Image URL or click Browse...",
             height=40
         )
         self.cover_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
-        
+
         ctk.CTkButton(
             cover_frame,
             text="Browse",
@@ -302,7 +357,7 @@ class ReviewCardApp(ctk.CTk):
             height=40,
             command=self._browse_cover
         ).pack(side="right")
-        
+
         self.cover_status = ctk.CTkLabel(
             self.left_panel,
             text="",
@@ -460,7 +515,37 @@ class ReviewCardApp(ctk.CTk):
         else:
             color = "#ef4444"
         self.score_label.configure(text_color=color)
-    
+
+    def _on_mode_change(self, value):
+        """Handle generator mode change."""
+        if value == "Review Card":
+            self.generator_mode = "review"
+            self.textless_inputs.pack_forget()
+            self.review_inputs.pack(fill="x")
+            self.width_entry.delete(0, "end")
+            self.width_entry.insert(0, "1200")
+            self.height_entry.delete(0, "end")
+            self.height_entry.insert(0, "675")
+        else:
+            self.generator_mode = "textless"
+            self.review_inputs.pack_forget()
+            self.textless_inputs.pack(fill="x")
+            self.width_entry.delete(0, "end")
+            self.width_entry.insert(0, "1080")
+            self.height_entry.delete(0, "end")
+            self.height_entry.insert(0, "1080")
+
+    def _update_stars_label(self, value):
+        """Update the star rating display label."""
+        stars = round(value * 2) / 2
+        self.stars_var.set(stars)
+        full = int(stars)
+        has_half = (stars - full) >= 0.25
+        empty = 5 - full - (1 if has_half else 0)
+        display = "\u2605" * full + ("\u00bd" if has_half else "") + "\u2606" * empty
+        num_text = f"{stars:.1f}" if stars != int(stars) else f"{int(stars)}.0"
+        self.stars_label.configure(text=f"{display}  {num_text}")
+
     def _on_platform_change(self, value):
         """Handle platform selection change."""
         if value.lower() == "none":
@@ -520,55 +605,61 @@ class ReviewCardApp(ctk.CTk):
         if not title:
             messagebox.showerror("Validation Error", "Please enter a title.")
             return False
-        
-        review = self.review_text.get("1.0", "end").strip()
-        if not review:
-            messagebox.showerror("Validation Error", "Please enter a review.")
-            return False
-        
+
+        if self.generator_mode == "review":
+            review = self.review_text.get("1.0", "end").strip()
+            if not review:
+                messagebox.showerror("Validation Error", "Please enter a review.")
+                return False
+
         return True
     
     def _generate_card(self):
         """Generate the review card."""
         if not self._validate_inputs():
             return
-        
+
         self.status_label.configure(text="Generating...", text_color="yellow")
         self.generate_btn.configure(state="disabled")
         self.update()
-        
+
         try:
-            # Get values
             title = self.title_entry.get().strip()
-            score = self.score_var.get()
-            review = self.review_text.get("1.0", "end").strip()
             content_type = self.content_type_var.get()
-            
             platform = self.platform_var.get().lower()
             username = self.username_entry.get().strip()
-            
             cover = self.cover_entry.get().strip() or None
-            
             style = self._get_style()
-            
-            # Generate card
-            self.generated_card = create_review_card(
-                title=title,
-                score=score,
-                review_text=review,
-                content_type=content_type,
-                cover_image=cover,
-                platform=platform,
-                platform_username=username,
-                style=style
-            )
-            
-            # Update preview
+
+            if self.generator_mode == "textless":
+                stars = self.stars_var.get()
+                self.generated_card = create_textless_review_card(
+                    title=title,
+                    stars=stars,
+                    content_type=content_type,
+                    cover_image=cover,
+                    platform=platform,
+                    platform_username=username,
+                    style=style,
+                )
+            else:
+                score = self.score_var.get()
+                review = self.review_text.get("1.0", "end").strip()
+                self.generated_card = create_review_card(
+                    title=title,
+                    score=score,
+                    review_text=review,
+                    content_type=content_type,
+                    cover_image=cover,
+                    platform=platform,
+                    platform_username=username,
+                    style=style,
+                )
+
             self._update_preview()
-            
             self.status_label.configure(text="Card generated successfully!", text_color="green")
             self.save_btn.configure(state="normal")
-            
+
         except Exception as e:
             self.status_label.configure(text=f"Error: {str(e)}", text_color="red")
             messagebox.showerror("Generation Error", str(e))
@@ -618,7 +709,8 @@ class ReviewCardApp(ctk.CTk):
         # Default filename from title
         title = self.title_entry.get().strip()
         safe_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).strip()
-        default_name = f"{safe_title.replace(' ', '_')}_review.png" if safe_title else "review_card.png"
+        suffix = "_textless_review.png" if self.generator_mode == "textless" else "_review.png"
+        default_name = f"{safe_title.replace(' ', '_')}{suffix}" if safe_title else "review_card.png"
         
         filepath = filedialog.asksaveasfilename(
             defaultextension=".png",
