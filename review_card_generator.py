@@ -390,81 +390,88 @@ class ReviewCardGenerator:
         )
     
     def _draw_ramadan_decorations(self, card: Image.Image, draw: ImageDraw.Draw):
-        """Draw a starry night sky with a crescent moon overlay."""
+        """Draw pixel-art Ramadan decorations: stars, crescent moon, mosque silhouette."""
         w, h = card.size
         rng = random.Random(42)
+        px = max(3, min(w, h) // 160)
+        gw, gh = w // px, h // px
 
-        # --- Stars ---
-        star_count = max(40, (w * h) // 8000)
-        for _ in range(star_count):
-            sx = rng.randint(0, w - 1)
-            sy = rng.randint(0, h - 1)
-            brightness = rng.randint(160, 255)
-            radius = rng.choice([1, 1, 1, 2, 2, 3])
-            alpha = rng.randint(120, 255)
-            color = (brightness, brightness, rng.randint(brightness, 255), alpha)
-            draw.ellipse(
-                [(sx - radius, sy - radius), (sx + radius, sy + radius)],
-                fill=color,
-            )
+        overlay = Image.new("RGBA", card.size, (0, 0, 0, 0))
+        od = ImageDraw.Draw(overlay)
 
-        # Sparkle stars (4-pointed) scattered sparsely
-        for _ in range(star_count // 6):
-            sx = rng.randint(0, w - 1)
-            sy = rng.randint(0, h - 1)
-            length = rng.randint(4, 9)
-            col = (255, 255, rng.randint(200, 255), rng.randint(180, 255))
-            draw.line([(sx - length, sy), (sx + length, sy)], fill=col, width=1)
-            draw.line([(sx, sy - length), (sx, sy + length)], fill=col, width=1)
+        def block(gx, gy, color):
+            if 0 <= gx < gw and 0 <= gy < gh:
+                x0, y0 = gx * px, gy * px
+                od.rectangle([(x0, y0), (x0 + px - 1, y0 + px - 1)], fill=color)
 
-        # --- Crescent Moon ---
-        moon_radius = int(min(w, h) * 0.12)
-        margin = self.style.padding + moon_radius
-        moon_cx = w - margin
-        moon_cy = h - margin
+        # ---- Pixel stars ----
+        for _ in range(max(25, gw * gh // 300)):
+            sx, sy = rng.randint(0, gw - 1), rng.randint(0, gh - 1)
+            b = rng.randint(80, 160)
+            block(sx, sy, (b, b, min(255, b + 30), rng.randint(50, 110)))
 
-        moon_layer = Image.new("RGBA", card.size, (0, 0, 0, 0))
-        moon_draw = ImageDraw.Draw(moon_layer)
+        # ---- Pixel crescent moon (top-right) ----
+        mr = max(5, min(gw, gh) // 14)
+        mcx, mcy = gw - 4 - mr, 3 + mr
+        cut_dx = int(mr * 0.5)
+        cut_dy = int(-mr * 0.2)
+        cut_r = mr * 0.78
 
-        # Outer (full) circle – golden glow
-        glow_r = moon_radius + 6
-        moon_draw.ellipse(
-            [(moon_cx - glow_r, moon_cy - glow_r),
-             (moon_cx + glow_r, moon_cy + glow_r)],
-            fill=(255, 215, 0, 40),
-        )
+        gold = (255, 215, 0, 220)
+        gold_glow = (255, 215, 0, 50)
 
-        # Solid moon circle
-        moon_draw.ellipse(
-            [(moon_cx - moon_radius, moon_cy - moon_radius),
-             (moon_cx + moon_radius, moon_cy + moon_radius)],
-            fill=(255, 215, 0, 230),
-        )
+        for dy in range(-mr - 2, mr + 3):
+            for dx in range(-mr - 2, mr + 3):
+                d = (dx * dx + dy * dy) ** 0.5
+                cd = ((dx - cut_dx) ** 2 + (dy - cut_dy) ** 2) ** 0.5
+                if d <= mr and cd > cut_r:
+                    block(mcx + dx, mcy + dy, gold)
+                elif mr < d <= mr + 1.5 and cd > cut_r:
+                    block(mcx + dx, mcy + dy, gold_glow)
 
-        # Cut-out circle to form the crescent (offset to upper-right)
-        cut_offset_x = int(moon_radius * 0.55)
-        cut_offset_y = int(-moon_radius * 0.2)
-        cut_r = int(moon_radius * 0.85)
-        moon_draw.ellipse(
-            [(moon_cx + cut_offset_x - cut_r, moon_cy + cut_offset_y - cut_r),
-             (moon_cx + cut_offset_x + cut_r, moon_cy + cut_offset_y + cut_r)],
-            fill=(0, 0, 0, 0),
-        )
+        # Accent stars near the crescent
+        for offset_x, offset_y in [(-mr - 3, -2), (-mr - 2, mr - 1),
+                                    (2, -mr - 2), (mr, mr - 2)]:
+            block(mcx + offset_x, mcy + offset_y, (255, 230, 100, 180))
 
-        card.alpha_composite(moon_layer)
+        # ---- Mosque silhouette along bottom ----
+        sil = (8, 10, 28, 200)
+        sil_edge = (18, 22, 48, 200)
+        corner_margin = max(3, self.style.corner_radius // px + 1)
 
-        # Small decorative stars near the crescent
-        for _ in range(5):
-            angle = rng.uniform(0, 2 * math.pi)
-            dist = moon_radius + rng.randint(15, 40)
-            sx = int(moon_cx + dist * math.cos(angle))
-            sy = int(moon_cy + dist * math.sin(angle))
-            if 0 <= sx < w and 0 <= sy < h:
-                r = rng.choice([2, 3])
-                draw.ellipse(
-                    [(sx - r, sy - r), (sx + r, sy + r)],
-                    fill=(255, 223, 100, 220),
-                )
+        base_h = 3
+        profile = [base_h] * gw
+
+        dome_specs = [
+            (gw // 6, max(3, gw // 22)),
+            (gw // 2, max(4, gw // 16)),
+            (gw * 5 // 6, max(3, gw // 20)),
+        ]
+        for dc, dr in dome_specs:
+            for dx in range(-dr, dr + 1):
+                gx = dc + dx
+                if 0 <= gx < gw:
+                    dh = base_h + int((dr ** 2 - dx ** 2) ** 0.5)
+                    profile[gx] = max(profile[gx], dh)
+
+        min_h = base_h + max(5, gw // 18)
+        for mx in [gw // 4, gw * 3 // 4]:
+            for off in (-1, 0, 1):
+                if 0 <= mx + off < gw:
+                    profile[mx + off] = max(profile[mx + off], min_h)
+            if 0 <= mx < gw:
+                profile[mx] = max(profile[mx], min_h + 2)
+
+        for gx in range(gw):
+            if gx < corner_margin or gx >= gw - corner_margin:
+                continue
+            for gy_off in range(profile[gx]):
+                gy = gh - 1 - gy_off
+                if gy >= 0:
+                    c = sil_edge if gy_off == profile[gx] - 1 else sil
+                    block(gx, gy, c)
+
+        card.alpha_composite(overlay)
 
     def generate(
         self, 
