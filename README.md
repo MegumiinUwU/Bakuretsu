@@ -40,7 +40,7 @@ The original full review card — title, cover, numeric score, review text, and 
 
 A visual-only card with a star rating instead of text. Shows the title, cover image, and a ★ rating (0.5–5.0 in half-star steps). Square format (1080×1080 default). Great for quick ratings on social media.
 
-<img src="Readme%20images/Planet_of_lana_textless_review.png" alt="example" width="650">
+<img src="Readme%20images/Planet_of_Lana_textless_review.png" alt="example" width="650">
 
 ##### Score Card
 
