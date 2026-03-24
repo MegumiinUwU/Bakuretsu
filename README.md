@@ -40,13 +40,13 @@ The original full review card — title, cover, numeric score, review text, and 
 
 A visual-only card with a star rating instead of text. Shows the title, cover image, and a ★ rating (0.5–5.0 in half-star steps). Square format (1080×1080 default). Great for quick ratings on social media.
 
-<img src="Readme%20images/Planet_of_lana_textless_review.png" alt="Multiple review card examples showing different color palette styles - Bakuretsu Dark, Midnight Blue, Ocean, and more" width="750">
+<img src="Readme%20images/Planet_of_lana_textless_review.png" alt="example" width="650">
 
 ##### Score Card
 
 A minimal, stylized card focused on the score. Features the cover image framed with an accent-colored glow border, decorative corner brackets, a large numeric score out of 10, and platform branding. Square format (1080×1080 default).
 
-<img src="Readme%20images/Planet_of_Lana_score_card.png" alt="Multiple review card examples showing different color palette styles - Bakuretsu Dark, Midnight Blue, Ocean, and more" width="650">
+<img src="Readme%20images/Planet_of_Lana_score_card.png" alt="example" width="650">
 
 #### Style Palettes
 
