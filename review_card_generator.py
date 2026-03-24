@@ -98,6 +98,24 @@ class TextlessReviewData:
         return True
 
 
+@dataclass
+class ScoreCardData:
+    """Data container for a minimal score card (cover + score + platform handle)."""
+    title: str
+    score: float
+    content_type: ContentType
+    cover_image: Optional[Union[str, Path, Image.Image]] = None
+    platform: Platform = Platform.NONE
+    platform_username: str = ""
+
+    def validate(self) -> bool:
+        if not self.title or not self.title.strip():
+            raise ValueError("Title cannot be empty")
+        if not 0 <= self.score <= 10:
+            raise ValueError("Score must be between 0 and 10")
+        return True
+
+
 class ImageLoader:
     """Handles loading images from various sources."""
     
@@ -806,6 +824,283 @@ class TextlessReviewCardGenerator:
         return card
 
 
+class ScoreCardGenerator:
+    """Generator for square score cards: cover image + score + platform handle."""
+
+    def __init__(self, style: Optional[CardStyle] = None):
+        self.style = style or CardStyle(width=1080, height=1080)
+        self._base = ReviewCardGenerator(self.style)
+
+    def _get_score_color(self, score: float) -> tuple[int, int, int]:
+        if score >= 8:
+            return (34, 197, 94)
+        elif score >= 6:
+            return (234, 179, 8)
+        elif score >= 4:
+            return (249, 115, 22)
+        else:
+            return (239, 68, 68)
+
+    def _format_score(self, score: float) -> str:
+        if score == int(score):
+            return str(int(score))
+        return f"{score:.1f}"
+
+    def _draw_corner_brackets(
+        self, draw: ImageDraw.Draw, x: int, y: int, w: int, h: int,
+        color: tuple, length: int, thickness: int,
+    ):
+        """Draw L-shaped accent brackets at the four corners of a rectangle."""
+        corners = [
+            (x, y, 1, 1),
+            (x + w, y, -1, 1),
+            (x, y + h, 1, -1),
+            (x + w, y + h, -1, -1),
+        ]
+        for cx, cy, dx, dy in corners:
+            draw.line([(cx, cy), (cx + dx * length, cy)], fill=color, width=thickness)
+            draw.line([(cx, cy), (cx, cy + dy * length)], fill=color, width=thickness)
+
+    def _draw_border_glow(
+        self, card: Image.Image, x: int, y: int, w: int, h: int,
+        radius: int, color: tuple, layers: int = 4,
+    ):
+        """Draw a soft glow around a rounded rectangle by stacking blurred outlines."""
+        for i in range(layers, 0, -1):
+            glow = Image.new("RGBA", card.size, (0, 0, 0, 0))
+            gd = ImageDraw.Draw(glow)
+            expand = i * 3
+            alpha = max(10, 55 - i * 12)
+            gd.rounded_rectangle(
+                [(x - expand, y - expand), (x + w + expand, y + h + expand)],
+                radius=radius + expand,
+                outline=(*color, alpha),
+                width=2,
+            )
+            glow = glow.filter(ImageFilter.GaussianBlur(radius=i * 2))
+            card.alpha_composite(glow)
+
+    def _draw_dot_grid(
+        self, draw: ImageDraw.Draw, x0: int, y0: int, x1: int, y1: int,
+        spacing: int, color: tuple,
+    ):
+        """Draw a subtle decorative dot grid pattern in the given region."""
+        for gx in range(x0, x1, spacing):
+            for gy in range(y0, y1, spacing):
+                draw.ellipse([(gx, gy), (gx + 2, gy + 2)], fill=color)
+
+    def generate(
+        self,
+        review: ScoreCardData,
+        output_path: Optional[Union[str, Path]] = None,
+    ) -> Image.Image:
+        review.validate()
+
+        w, h = self.style.width, self.style.height
+        card = self._base._create_rounded_rectangle(
+            (w, h), self.style.corner_radius, self.style.background_color,
+        )
+        draw = ImageDraw.Draw(card)
+
+        if self.style.theme == "ramadan":
+            self._base._draw_ramadan_decorations(card, draw)
+            draw = ImageDraw.Draw(card)
+
+        padding = self.style.padding
+        center_x = w // 2
+        card_min = min(w, h)
+        accent = self.style.accent_color
+
+        # --- Background dot grid in top-left and bottom-right quadrants ---
+        dot_alpha = 25
+        dot_color = (*accent, dot_alpha)
+        dot_spacing = max(18, card_min // 50)
+        self._draw_dot_grid(
+            draw, padding, padding,
+            padding + card_min // 4, padding + card_min // 4,
+            dot_spacing, dot_color,
+        )
+        self._draw_dot_grid(
+            draw, w - padding - card_min // 4, h - padding - card_min // 4,
+            w - padding, h - padding,
+            dot_spacing, dot_color,
+        )
+
+        # --- Thin accent lines in the top-right and bottom-left corners ---
+        line_len = card_min // 6
+        line_color = (*accent, 40)
+        draw.line([(w - padding, padding), (w - padding - line_len, padding)], fill=line_color, width=1)
+        draw.line([(w - padding, padding), (w - padding, padding + line_len)], fill=line_color, width=1)
+        draw.line([(padding, h - padding), (padding + line_len, h - padding)], fill=line_color, width=1)
+        draw.line([(padding, h - padding), (padding, h - padding - line_len)], fill=line_color, width=1)
+
+        # --- Layout calculations ---
+        border_thickness = max(3, card_min // 270)
+        border_pad = border_thickness + max(4, card_min // 160)
+        cover_w = int(card_min * 0.62)
+        cover_h = cover_w
+        frame_w = cover_w + border_pad * 2
+        frame_h = cover_h + border_pad * 2
+
+        score_num_size = max(56, int(card_min * 0.085))
+        score_denom_size = max(32, int(card_min * 0.045))
+        try:
+            bold_path = self.style.bold_font_path or "C:/Windows/Fonts/segoeuib.ttf"
+            score_num_font = ImageFont.truetype(bold_path, score_num_size)
+            score_denom_font = ImageFont.truetype(bold_path, score_denom_size)
+        except (OSError, IOError, AttributeError):
+            score_num_font = self.style.score_font
+            score_denom_font = self.style.platform_font
+
+        score_text = self._format_score(review.score)
+        denom_text = "/10"
+        num_bbox = score_num_font.getbbox(score_text)
+        denom_bbox = score_denom_font.getbbox(denom_text)
+        score_total_w = (num_bbox[2] - num_bbox[0]) + 4 + (denom_bbox[2] - denom_bbox[0])
+        score_total_h = num_bbox[3] - num_bbox[1]
+
+        gap = int(card_min * 0.035)
+        bracket_margin = max(10, card_min // 70)
+        bracket_len = max(20, card_min // 25)
+        bracket_thickness = max(2, card_min // 360)
+        platform_h = 36 if review.platform != Platform.NONE else 0
+
+        total_h = frame_h + gap + score_total_h
+        start_y = max(padding, (h - total_h - platform_h) // 2)
+
+        frame_x = center_x - frame_w // 2
+        frame_y = start_y
+        cover_x = frame_x + border_pad
+        cover_y = frame_y + border_pad
+
+        # --- Glow around border ---
+        self._draw_border_glow(card, frame_x, frame_y, frame_w, frame_h, 15, accent, layers=5)
+        draw = ImageDraw.Draw(card)
+
+        # --- Border rectangle ---
+        draw.rounded_rectangle(
+            [(frame_x, frame_y), (frame_x + frame_w, frame_y + frame_h)],
+            radius=15,
+            outline=(*accent, 200),
+            width=border_thickness,
+        )
+
+        # --- Cover image ---
+        if review.cover_image:
+            try:
+                cover = ImageLoader.load(review.cover_image)
+                cover_rounded = self._base._create_cover_with_rounded_corners(
+                    cover, cover_w, cover_h, 12,
+                )
+                card.paste(cover_rounded, (cover_x, cover_y), cover_rounded)
+            except Exception:
+                self._draw_placeholder(draw, cover_x, cover_y, cover_w, cover_h, center_x)
+        else:
+            self._draw_placeholder(draw, cover_x, cover_y, cover_w, cover_h, center_x)
+
+        # --- Corner brackets around the image frame ---
+        bx = frame_x - bracket_margin
+        by = frame_y - bracket_margin
+        bw = frame_w + bracket_margin * 2
+        bh = frame_h + bracket_margin * 2
+        self._draw_corner_brackets(
+            draw, bx, by, bw, bh,
+            (*accent, 120), bracket_len, bracket_thickness,
+        )
+
+        # --- Score: "X/10" with /10 in smaller dimmer text ---
+        score_y = frame_y + frame_h + gap
+        score_color = self._get_score_color(review.score)
+        score_start_x = center_x - score_total_w // 2
+
+        draw.text(
+            (score_start_x, score_y),
+            score_text,
+            font=score_num_font,
+            fill=score_color,
+            anchor="lt",
+        )
+
+        denom_x = score_start_x + (num_bbox[2] - num_bbox[0]) + 4
+        num_baseline = score_y + (num_bbox[3] - num_bbox[1])
+        denom_baseline_offset = denom_bbox[3] - denom_bbox[1]
+        denom_y = num_baseline - denom_baseline_offset
+
+        draw.text(
+            (denom_x, denom_y),
+            denom_text,
+            font=score_denom_font,
+            fill=(*self.style.secondary_color, 180),
+            anchor="lt",
+        )
+
+        # --- Accent separator line below score ---
+        sep_y = score_y + score_total_h + int(gap * 0.6)
+        sep_half = card_min // 8
+        draw.line(
+            [(center_x - sep_half, sep_y), (center_x + sep_half, sep_y)],
+            fill=(*accent, 60), width=2,
+        )
+
+        # --- Platform branding (bottom-right) ---
+        if review.platform != Platform.NONE:
+            platform_y = h - padding - 36
+            platform_x = w - padding
+            branding = None
+            if review.platform == Platform.BACKLOGGD:
+                branding = PlatformBranding.backloggd(review.platform_username)
+            elif review.platform == Platform.LETTERBOXD:
+                branding = PlatformBranding.letterboxd(review.platform_username)
+            if branding:
+                platform_text = branding.name
+                if review.platform_username:
+                    platform_text += f"  @{review.platform_username}"
+                logo_size = 32
+                text_bbox = self.style.platform_font.getbbox(platform_text)
+                text_w = text_bbox[2] - text_bbox[0]
+                total_brand_w = logo_size + 10 + text_w
+                brand_x = platform_x - total_brand_w
+
+                try:
+                    if branding.logo_path and Path(branding.logo_path).exists():
+                        logo = Image.open(branding.logo_path).convert("RGBA")
+                        logo = logo.resize((logo_size, logo_size), Image.Resampling.LANCZOS)
+                        card.paste(logo, (brand_x, platform_y), logo)
+                        brand_x += logo_size + 10
+                except Exception:
+                    draw.ellipse(
+                        [(brand_x, platform_y), (brand_x + logo_size, platform_y + logo_size)],
+                        fill=branding.accent_color,
+                    )
+                    brand_x += logo_size + 10
+
+                draw.text(
+                    (brand_x, platform_y + logo_size // 2),
+                    platform_text,
+                    font=self.style.platform_font,
+                    fill=self.style.secondary_color,
+                    anchor="lm",
+                )
+
+        if output_path:
+            output_path = Path(output_path)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            card.save(output_path, "PNG")
+
+        return card
+
+    def _draw_placeholder(
+        self, draw: ImageDraw.Draw, x: int, y: int, w: int, h: int, cx: int,
+    ):
+        draw.rounded_rectangle(
+            [(x, y), (x + w, y + h)], radius=12, fill=(40, 40, 50, 255),
+        )
+        draw.text(
+            (cx, y + h // 2), "No Cover",
+            font=self.style.review_font, fill=self.style.secondary_color, anchor="mm",
+        )
+
+
 def create_review_card(
     title: str,
     score: float,
@@ -884,6 +1179,45 @@ def create_textless_review_card(
     )
 
     generator = TextlessReviewCardGenerator(style)
+    return generator.generate(review, output_path)
+
+
+def create_score_card(
+    title: str,
+    score: float,
+    content_type: str = "game",
+    cover_image: Optional[str] = None,
+    platform: str = "none",
+    platform_username: str = "",
+    output_path: Optional[str] = None,
+    style: Optional[CardStyle] = None,
+) -> Image.Image:
+    """
+    Convenience function to create a square score card (cover + score + handle).
+
+    Args:
+        title: Name of the game or movie
+        score: Score out of 10 (0-10, can be decimal like 7.5)
+        content_type: "game" or "movie"
+        cover_image: URL or file path to cover image
+        platform: "none", "backloggd", or "letterboxd"
+        platform_username: Username on the platform
+        output_path: Optional path to save the image
+        style: Optional CardStyle for customization
+
+    Returns:
+        PIL Image object of the generated card
+    """
+    review = ScoreCardData(
+        title=title,
+        score=score,
+        content_type=ContentType(content_type.lower()),
+        cover_image=cover_image,
+        platform=Platform(platform.lower()),
+        platform_username=platform_username,
+    )
+
+    generator = ScoreCardGenerator(style)
     return generator.generate(review, output_path)
 
 

@@ -14,11 +14,14 @@ import threading
 from review_card_generator import (
     create_review_card,
     create_textless_review_card,
+    create_score_card,
     CardStyle,
     ReviewCardGenerator,
     TextlessReviewCardGenerator,
+    ScoreCardGenerator,
     ReviewData,
     TextlessReviewData,
+    ScoreCardData,
     Platform,
     ContentType,
     ImageLoader,
@@ -198,7 +201,7 @@ class ReviewCardApp(ctk.CTk):
         self.mode_var = ctk.StringVar(value="Review Card")
         self.mode_selector = ctk.CTkSegmentedButton(
             self.left_panel,
-            values=["Review Card", "Textless Review"],
+            values=["Review Card", "Textless Review", "Score Card"],
             variable=self.mode_var,
             command=self._on_mode_change,
         )
@@ -290,6 +293,33 @@ class ReviewCardApp(ctk.CTk):
             width=140,
         )
         self.stars_label.pack(side="right")
+
+        # -- Score Card mode inputs --
+        self.score_card_inputs = ctk.CTkFrame(self.mode_inputs_frame, fg_color="transparent")
+
+        ctk.CTkLabel(self.score_card_inputs, text="Score (0-10)", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w")
+
+        sc_score_frame = ctk.CTkFrame(self.score_card_inputs, fg_color="transparent")
+        sc_score_frame.pack(fill="x", pady=(5, 15))
+
+        self.sc_score_var = ctk.DoubleVar(value=7.0)
+        self.sc_score_slider = ctk.CTkSlider(
+            sc_score_frame,
+            from_=0,
+            to=10,
+            number_of_steps=20,
+            variable=self.sc_score_var,
+            command=self._update_sc_score_label,
+        )
+        self.sc_score_slider.pack(side="left", fill="x", expand=True, padx=(0, 10))
+
+        self.sc_score_label = ctk.CTkLabel(
+            sc_score_frame,
+            text="7.0",
+            font=ctk.CTkFont(size=18, weight="bold"),
+            width=50,
+        )
+        self.sc_score_label.pack(side="right")
 
         # === Common inputs ===
         # Content Type
@@ -518,18 +548,27 @@ class ReviewCardApp(ctk.CTk):
 
     def _on_mode_change(self, value):
         """Handle generator mode change."""
+        self.review_inputs.pack_forget()
+        self.textless_inputs.pack_forget()
+        self.score_card_inputs.pack_forget()
+
         if value == "Review Card":
             self.generator_mode = "review"
-            self.textless_inputs.pack_forget()
             self.review_inputs.pack(fill="x")
             self.width_entry.delete(0, "end")
             self.width_entry.insert(0, "1200")
             self.height_entry.delete(0, "end")
             self.height_entry.insert(0, "675")
-        else:
+        elif value == "Textless Review":
             self.generator_mode = "textless"
-            self.review_inputs.pack_forget()
             self.textless_inputs.pack(fill="x")
+            self.width_entry.delete(0, "end")
+            self.width_entry.insert(0, "1080")
+            self.height_entry.delete(0, "end")
+            self.height_entry.insert(0, "1080")
+        else:
+            self.generator_mode = "score_card"
+            self.score_card_inputs.pack(fill="x")
             self.width_entry.delete(0, "end")
             self.width_entry.insert(0, "1080")
             self.height_entry.delete(0, "end")
@@ -545,6 +584,21 @@ class ReviewCardApp(ctk.CTk):
         display = "\u2605" * full + ("\u00bd" if has_half else "") + "\u2606" * empty
         num_text = f"{stars:.1f}" if stars != int(stars) else f"{int(stars)}.0"
         self.stars_label.configure(text=f"{display}  {num_text}")
+
+    def _update_sc_score_label(self, value):
+        """Update the score card score display label."""
+        score = round(value * 2) / 2
+        self.sc_score_var.set(score)
+        self.sc_score_label.configure(text=f"{score:.1f}" if score != int(score) else f"{int(score)}.0")
+        if score >= 8:
+            color = "#22c55e"
+        elif score >= 6:
+            color = "#eab308"
+        elif score >= 4:
+            color = "#f97316"
+        else:
+            color = "#ef4444"
+        self.sc_score_label.configure(text_color=color)
 
     def _on_platform_change(self, value):
         """Handle platform selection change."""
@@ -612,6 +666,12 @@ class ReviewCardApp(ctk.CTk):
                 messagebox.showerror("Validation Error", "Please enter a review.")
                 return False
 
+        if self.generator_mode == "score_card":
+            cover = self.cover_entry.get().strip()
+            if not cover:
+                messagebox.showerror("Validation Error", "Please provide a cover image for the score card.")
+                return False
+
         return True
     
     def _generate_card(self):
@@ -636,6 +696,17 @@ class ReviewCardApp(ctk.CTk):
                 self.generated_card = create_textless_review_card(
                     title=title,
                     stars=stars,
+                    content_type=content_type,
+                    cover_image=cover,
+                    platform=platform,
+                    platform_username=username,
+                    style=style,
+                )
+            elif self.generator_mode == "score_card":
+                score = self.sc_score_var.get()
+                self.generated_card = create_score_card(
+                    title=title,
+                    score=score,
                     content_type=content_type,
                     cover_image=cover,
                     platform=platform,
@@ -709,7 +780,8 @@ class ReviewCardApp(ctk.CTk):
         # Default filename from title
         title = self.title_entry.get().strip()
         safe_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).strip()
-        suffix = "_textless_review.png" if self.generator_mode == "textless" else "_review.png"
+        suffixes = {"textless": "_textless_review.png", "score_card": "_score_card.png"}
+        suffix = suffixes.get(self.generator_mode, "_review.png")
         default_name = f"{safe_title.replace(' ', '_')}{suffix}" if safe_title else "review_card.png"
         
         filepath = filedialog.asksaveasfilename(
