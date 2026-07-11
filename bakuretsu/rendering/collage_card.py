@@ -62,11 +62,14 @@ class CollageCardRenderer(BaseCardRenderer):
         font = self.fonts.sized(int(height * 0.62), bold=True)
         text_w = textutil.measure(text, font)
         pad = height // 3
-        left = right - text_w - pad * 2
+        # never narrower than a circle, otherwise the corner radius exceeds
+        # half the width and Pillow draws a line artifact through the pill
+        pill_w = max(text_w + pad * 2, height)
+        left = right - pill_w
         top = bottom - height
         draw.rounded_rectangle(
             [(left, top), (right, bottom)],
-            radius=height // 2,
+            radius=min(pill_w, height) // 2,
             fill=(*score_color(score), 235),
         )
         draw.text(((left + right) // 2, (top + bottom) // 2), text,
