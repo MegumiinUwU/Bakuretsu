@@ -1,4 +1,6 @@
-# Bakuretsu Review Card Generator Dependencies
+# Bakuretsu dependencies
 Pillow>=10.0.0
 requests>=2.28.0
 customtkinter>=5.2.0
+arabic_reshaper>=3.0.0
+python-bidi>=0.4.2

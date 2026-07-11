@@ -1,0 +1,19 @@
+# Virtual environments
+jojo/
+venv/
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Generated cards
+output/
+
+# Local user settings (usernames etc.)
+settings.json
+
+# OS
+Thumbs.db
+.DS_Store
