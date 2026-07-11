@@ -122,13 +122,26 @@ class BaseCardRenderer:
         else:
             x = style.padding
 
+        text_fill = style.secondary_color
+        theme = get_theme(style.theme) if style.theme else None
+        if theme and theme.attribution_pill:
+            pad_x = max(10, logo_size // 2)
+            pad_y = max(5, logo_size // 5)
+            pill_h = logo_size + pad_y * 2
+            draw.rounded_rectangle(
+                [(x - pad_x, y - pad_y), (x + total_w + pad_x, y - pad_y + pill_h)],
+                radius=pill_h // 2,
+                fill=(8, 10, 22, 200),
+            )
+            text_fill = (255, 255, 255)
+
         logo = platform.logo(logo_size)
         card.alpha_composite(logo, (x, y))
         draw.text(
             (x + logo_size + gap, y + logo_size // 2),
             credit_display,
             font=self.fonts.platform,
-            fill=style.secondary_color,
+            fill=text_fill,
             anchor="lm",
         )
 

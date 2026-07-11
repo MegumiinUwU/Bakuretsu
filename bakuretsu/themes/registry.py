@@ -34,6 +34,9 @@ Decorator = Callable[[Image.Image, object], None]  # (card, style) -> None
 class Theme:
     palette_name: str
     decorator: Optional[Decorator] = None
+    # draw a dark backdrop pill behind the platform credit line, for themes
+    # whose artwork makes the bottom of the card too busy or bright
+    attribution_pill: bool = False
 
     @property
     def palette(self) -> Palette:
@@ -67,7 +70,7 @@ THEMES: dict[str, Theme] = {
     "Winter": Theme("Winter", winter.draw),
     "Arcade": Theme("Arcade", arcade.draw),
     "Cinema": Theme("Cinema", cinema.draw),
-    "Youssef Mohamed": Theme("Youssef Mohamed", sonic.draw),
+    "Youssef Mohamed": Theme("Youssef Mohamed", sonic.draw, attribution_pill=True),
 }
 
 
