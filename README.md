@@ -20,7 +20,7 @@ You type your review, pick a theme and a size, and Bakuretsu renders a polished 
 
 ## Themes
 
-20 themes ship with the app: 12 clean color palettes (Bakuretsu Dark, Midnight Blue, Deep Purple, Ocean, Forest, Sunset, Monochrome, Crimson, Gold Luxe, Coffee, Paper Light, Mint Light) plus 8 decorated themes with hand-drawn artwork:
+21 themes ship with the app: 12 clean color palettes (Bakuretsu Dark, Midnight Blue, Deep Purple, Ocean, Forest, Sunset, Monochrome, Crimson, Gold Luxe, Coffee, Paper Light, Mint Light) plus 9 decorated themes with hand-drawn artwork:
 
 - **Ramadan** golden crescent, hanging lanterns, starfield, mosque skyline
 - **Exams Time** chalk formulas, F-graded papers, coffee mug, pencil
@@ -30,6 +30,7 @@ You type your review, pick a theme and a size, and Bakuretsu renders a polished 
 - **Winter** snowflakes, falling snow, layered drifts
 - **Arcade** marching pixel invaders, hearts, coins, CRT scanlines
 - **Cinema** film strips and spotlight beams
+- **Youssef Mohamed** Sonic style: golden rings, speed streaks, and a Green Hill Zone checkered footer
 
 <div align="center">
 <img src="Readme%20images/themes.gif" alt="Browsing the theme dropdown and previewing different themes" width="850">

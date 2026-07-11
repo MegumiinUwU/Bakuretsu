@@ -38,7 +38,7 @@ class CardStyle:
     primary_color: RGB = (255, 255, 255)
     secondary_color: RGB = (156, 163, 175)
     accent_color: RGB = (236, 72, 153)
-    corner_radius: int = 20
+    corner_radius: int = 0  # sharp square edges by default
     padding: int = 40
     theme: Optional[str] = None  # key of a decorated theme, e.g. "ramadan"
 

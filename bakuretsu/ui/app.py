@@ -224,7 +224,7 @@ class BakuretsuApp(ctk.CTk):
         ctk.CTkLabel(size_row, text="Radius:").pack(side="left")
         self.radius_entry = ctk.CTkEntry(size_row, width=56, height=30)
         self.radius_entry.pack(side="left", padx=4)
-        self.radius_entry.insert(0, "20")
+        self.radius_entry.insert(0, "0")
         self._set_size_fields(1200, 675)
 
     # ---------- preview panel ----------
@@ -347,7 +347,7 @@ class BakuretsuApp(ctk.CTk):
             height = int(self.height_entry.get())
             radius = int(self.radius_entry.get())
         except ValueError:
-            width, height, radius = 1200, 675, 20
+            width, height, radius = 1200, 675, 0
 
         theme_name = self.theme_var.get()
         theme = get_theme(theme_name)

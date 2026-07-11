@@ -134,4 +134,10 @@ PALETTES: dict[str, Palette] = {
         "secondary": "#a89f91",
         "accent": "#e0b64f",
     },
+    "Youssef Mohamed": {
+        "background": "#0d1b45",
+        "primary": "#ffffff",
+        "secondary": "#9db4e8",
+        "accent": "#ffd23f",
+    },
 }

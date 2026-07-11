@@ -41,7 +41,7 @@ def build_style(
     size: Optional[str] = None,
     width: Optional[int] = None,
     height: Optional[int] = None,
-    corner_radius: int = 20,
+    corner_radius: int = 0,
     **overrides,
 ) -> CardStyle:
     """Assemble a CardStyle from a theme name and/or size preset name."""

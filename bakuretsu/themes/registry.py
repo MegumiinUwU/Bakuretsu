@@ -22,6 +22,7 @@ from bakuretsu.themes.decorations import (
     ramadan,
     retrowave,
     sakura,
+    sonic,
     winter,
 )
 from bakuretsu.themes.palettes import PALETTES, Palette
@@ -66,6 +67,7 @@ THEMES: dict[str, Theme] = {
     "Winter": Theme("Winter", winter.draw),
     "Arcade": Theme("Arcade", arcade.draw),
     "Cinema": Theme("Cinema", cinema.draw),
+    "Youssef Mohamed": Theme("Youssef Mohamed", sonic.draw),
 }
 
 
