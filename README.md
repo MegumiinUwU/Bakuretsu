@@ -10,13 +10,22 @@ My personal toolkit for the reviews I post on social media. I review games, movi
 
 ## What it does
 
-You type your review, pick a theme and a size, and Bakuretsu renders a polished card image with your cover art, score, and platform username on it. Three card modes are included:
+You type your review, pick a theme and a size, and Bakuretsu renders a polished card image with your cover art, score, and platform username on it. Four card modes are included:
 
 | Mode | What you get |
 |------|--------------|
 | **Review Card** | Title, cover, numeric score, and your full review text |
 | **Star Review** | Textless card with the cover and a star rating (0.5 to 5.0, half stars supported) |
 | **Score Card** | Minimal card: glowing framed cover, big score, corner brackets |
+| **Top List** | Year in Review style collage: a ranked grid of 2 to 10 covers with gold/silver/bronze rank badges, color-coded score chips, and item titles |
+
+## Share in one click
+
+Once a card is generated, a share bar lights up under the preview:
+
+- **Copy Image** puts the card straight on your clipboard (as both PNG and bitmap), ready to paste anywhere with Ctrl+V
+- **Post on X** copies the image, then opens a pre-filled tweet with your title and score; just paste the image and post
+- **Open Backloggd / Letterboxd / MyAnimeList** copies the image and jumps to that platform with your title already searched, so you can attach the card to your review right away
 
 ## Themes
 
@@ -91,7 +100,7 @@ A new palette is one dict entry, a new decorated theme is one `draw(card, style)
 It also works from code:
 
 ```python
-from bakuretsu import create_review_card
+from bakuretsu import create_review_card, create_collage_card
 
 create_review_card(
     title="OMORI",
@@ -104,6 +113,19 @@ create_review_card(
     theme="Ramadan",
     size="Instagram Square",
     output_path="output/omori.png",
+)
+
+create_collage_card(
+    title="My Top 10 Games of 2026",
+    subtitle="ranked by pure vibes",
+    entries=[
+        {"title": "Hollow Knight", "score": 10, "cover_image": "covers/hk.jpg"},
+        {"title": "OMORI", "score": 9.5, "cover_image": "covers/omori.jpg"},
+        # ... up to 10, rank order
+    ],
+    platform="backloggd",
+    platform_username="YourUsername",
+    output_path="output/top10.png",
 )
 ```
 

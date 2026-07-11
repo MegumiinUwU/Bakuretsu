@@ -106,6 +106,39 @@ class StarReviewData:
 
 
 @dataclass
+class CollageEntry:
+    """One ranked item in a Top List collage."""
+
+    title: str
+    score: float
+    cover_image: Optional[CoverSource] = None
+
+
+@dataclass
+class CollageData:
+    """Top List / Year in Review collage: a ranked grid of covers + scores."""
+
+    title: str  # e.g. "My Top 10 Games of 2026"
+    entries: list[CollageEntry] = field(default_factory=list)
+    subtitle: str = ""  # optional smaller line under the title
+    content_type: ContentType = ContentType.GAME
+    platform: str = "none"
+    platform_username: str = ""
+    attribution_style: str = "handle"
+
+    def validate(self) -> None:
+        if not self.title or not self.title.strip():
+            raise ValueError("Title cannot be empty")
+        if not 2 <= len(self.entries) <= 10:
+            raise ValueError("A top list needs between 2 and 10 items")
+        for entry in self.entries:
+            if not entry.title or not entry.title.strip():
+                raise ValueError("Every item needs a title")
+            if not 0 <= entry.score <= 10:
+                raise ValueError(f"Score for {entry.title!r} must be between 0 and 10")
+
+
+@dataclass
 class ScoreCardData:
     """Minimal score card: cover framed with glow + big numeric score."""
 

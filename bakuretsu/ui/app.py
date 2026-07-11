@@ -10,7 +10,17 @@ from typing import Optional
 import customtkinter as ctk
 from PIL import Image
 
-from bakuretsu.api import build_style, create_review_card, create_score_card, create_star_card
+import webbrowser
+from urllib.parse import quote
+
+from bakuretsu.api import (
+    build_style,
+    create_collage_card,
+    create_review_card,
+    create_score_card,
+    create_star_card,
+)
+from bakuretsu.utils import clipboard
 from bakuretsu.platforms import PLATFORMS
 from bakuretsu.settings import ATTRIBUTION_STYLES, AppSettings
 from bakuretsu.sizes import get_preset, preset_names
@@ -20,7 +30,7 @@ from bakuretsu.ui.settings_dialog import SettingsDialog
 from bakuretsu.ui.widgets import ColorButton, section_label
 from bakuretsu.utils.colors import hex_to_rgb
 
-MODES = ["Review Card", "Star Review", "Score Card"]
+MODES = ["Review Card", "Star Review", "Score Card", "Top List"]
 
 SCORE_COLORS = ((8, "#22c55e"), (6, "#eab308"), (4, "#f97316"), (0, "#ef4444"))
 
@@ -121,6 +131,38 @@ class BakuretsuApp(ctk.CTk):
         # score card mode
         self.score_card_frame = ctk.CTkFrame(self.mode_frame, fg_color="transparent")
         self._build_score_slider(self.score_card_frame, "sc_score")
+
+        # top list (collage) mode
+        self.collage_items: list[dict] = []
+        self.collage_frame = ctk.CTkFrame(self.mode_frame, fg_color="transparent")
+
+        ctk.CTkLabel(self.collage_frame, text="Subtitle (optional)").pack(anchor="w")
+        self.subtitle_entry = ctk.CTkEntry(self.collage_frame, placeholder_text="e.g. ranked by pure vibes", height=32)
+        self.subtitle_entry.pack(fill="x", pady=(2, 10))
+
+        section_label(self.collage_frame, "List Items (2-10, rank order)").pack(anchor="w")
+        add_box = ctk.CTkFrame(self.collage_frame, fg_color="gray17")
+        add_box.pack(fill="x", pady=(4, 8))
+
+        row1 = ctk.CTkFrame(add_box, fg_color="transparent")
+        row1.pack(fill="x", padx=8, pady=(8, 4))
+        self.item_title_entry = ctk.CTkEntry(row1, placeholder_text="Item title...", height=32)
+        self.item_title_entry.pack(side="left", fill="x", expand=True, padx=(0, 6))
+        self.item_score_entry = ctk.CTkEntry(row1, placeholder_text="0-10", width=58, height=32)
+        self.item_score_entry.pack(side="right")
+
+        row2 = ctk.CTkFrame(add_box, fg_color="transparent")
+        row2.pack(fill="x", padx=8, pady=(0, 4))
+        self.item_cover_entry = ctk.CTkEntry(row2, placeholder_text="Cover URL or Browse...", height=32)
+        self.item_cover_entry.pack(side="left", fill="x", expand=True, padx=(0, 6))
+        ctk.CTkButton(row2, text="Browse", width=70, height=32, command=self._browse_item_cover).pack(side="right")
+
+        ctk.CTkButton(add_box, text="+ Add Item", height=32, command=self._add_collage_item).pack(
+            fill="x", padx=8, pady=(2, 8)
+        )
+
+        self.items_list_frame = ctk.CTkFrame(self.collage_frame, fg_color="transparent")
+        self.items_list_frame.pack(fill="x", pady=(0, 12))
 
         # --- common ---
         section_label(self.left, "Content Type").pack(anchor="w")
@@ -254,12 +296,34 @@ class BakuretsuApp(ctk.CTk):
         self.preview = PanZoomPreview(self.preview_frame)
         self.preview.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
 
+        # share bar: appears active once a card is generated
+        share_bar = ctk.CTkFrame(self.right, fg_color="transparent")
+        share_bar.grid(row=2, column=0, sticky="w", padx=20, pady=(0, 4))
+        self.copy_btn = ctk.CTkButton(
+            share_bar, text="📋 Copy Image", height=32, width=130,
+            fg_color="gray25", hover_color="gray35", state="disabled",
+            command=self._copy_card,
+        )
+        self.copy_btn.pack(side="left", padx=(0, 8))
+        self.x_share_btn = ctk.CTkButton(
+            share_bar, text="Post on X", height=32, width=100,
+            fg_color="gray25", hover_color="gray35", state="disabled",
+            command=self._share_on_x,
+        )
+        self.x_share_btn.pack(side="left", padx=(0, 8))
+        self.platform_share_btn = ctk.CTkButton(
+            share_bar, text="Open Platform", height=32, width=150,
+            fg_color="gray25", hover_color="gray35", state="disabled",
+            command=self._share_on_platform,
+        )
+        self.platform_share_btn.pack(side="left")
+
         self.status = ctk.CTkLabel(
             self.right,
-            text="Ready  —  drag to pan · scroll to zoom · double-click to fit",
+            text="Ready  |  drag to pan, scroll to zoom, double-click to fit",
             font=ctk.CTkFont(size=12), text_color="gray",
         )
-        self.status.grid(row=2, column=0, sticky="w", padx=20, pady=(0, 8))
+        self.status.grid(row=3, column=0, sticky="w", padx=20, pady=(0, 8))
 
     # ---------- events ----------
 
@@ -277,18 +341,84 @@ class BakuretsuApp(ctk.CTk):
         SettingsDialog(self, self.settings, on_save=self._apply_settings_defaults)
 
     def _on_mode_change(self, mode: str):
-        for frame in (self.review_frame, self.star_frame, self.score_card_frame):
+        for frame in (self.review_frame, self.star_frame, self.score_card_frame, self.collage_frame):
             frame.pack_forget()
         if mode == "Review Card":
             self.review_frame.pack(fill="x")
         elif mode == "Star Review":
             self.star_frame.pack(fill="x")
-        else:
+        elif mode == "Score Card":
             self.score_card_frame.pack(fill="x")
+        else:
+            self.collage_frame.pack(fill="x")
         # square presets suit the star/score cards better
         if mode in ("Star Review", "Score Card") and self.size_var.get() == "Landscape (Default)":
             self.size_var.set("Instagram Square")
             self._on_size_change("Instagram Square")
+
+    # ---------- top list items ----------
+
+    def _browse_item_cover(self):
+        filepath = filedialog.askopenfilename(
+            filetypes=[("Image files", "*.png *.jpg *.jpeg *.gif *.webp *.bmp"), ("All files", "*.*")]
+        )
+        if filepath:
+            self.item_cover_entry.delete(0, "end")
+            self.item_cover_entry.insert(0, filepath)
+
+    def _add_collage_item(self):
+        title = self.item_title_entry.get().strip()
+        if not title:
+            messagebox.showerror("Top List", "Please enter an item title.")
+            return
+        try:
+            score = float(self.item_score_entry.get().strip())
+            if not 0 <= score <= 10:
+                raise ValueError
+        except ValueError:
+            messagebox.showerror("Top List", "Score must be a number between 0 and 10.")
+            return
+        if len(self.collage_items) >= 10:
+            messagebox.showerror("Top List", "Maximum 10 items.")
+            return
+        self.collage_items.append({
+            "title": title,
+            "score": score,
+            "cover_image": self.item_cover_entry.get().strip() or None,
+        })
+        self.item_title_entry.delete(0, "end")
+        self.item_score_entry.delete(0, "end")
+        self.item_cover_entry.delete(0, "end")
+        self._refresh_items_list()
+
+    def _move_collage_item(self, index: int, delta: int):
+        new_index = index + delta
+        if 0 <= new_index < len(self.collage_items):
+            items = self.collage_items
+            items[index], items[new_index] = items[new_index], items[index]
+            self._refresh_items_list()
+
+    def _remove_collage_item(self, index: int):
+        del self.collage_items[index]
+        self._refresh_items_list()
+
+    def _refresh_items_list(self):
+        for child in self.items_list_frame.winfo_children():
+            child.destroy()
+        for i, item in enumerate(self.collage_items):
+            row = ctk.CTkFrame(self.items_list_frame, fg_color="gray17")
+            row.pack(fill="x", pady=2)
+            label = f"{i + 1}.  {item['title']}   ({item['score']:g})"
+            ctk.CTkLabel(row, text=label, anchor="w").pack(
+                side="left", fill="x", expand=True, padx=8
+            )
+            ctk.CTkButton(row, text="✕", width=28, height=24, fg_color="gray25",
+                          hover_color="#7f1d1d", command=lambda i=i: self._remove_collage_item(i)).pack(
+                side="right", padx=(2, 6), pady=3)
+            ctk.CTkButton(row, text="↓", width=28, height=24, fg_color="gray25", hover_color="gray35",
+                          command=lambda i=i: self._move_collage_item(i, 1)).pack(side="right", padx=2, pady=3)
+            ctk.CTkButton(row, text="↑", width=28, height=24, fg_color="gray25", hover_color="gray35",
+                          command=lambda i=i: self._move_collage_item(i, -1)).pack(side="right", padx=2, pady=3)
 
     def _update_stars_label(self, value):
         stars = round(float(value) * 2) / 2
@@ -301,6 +431,7 @@ class BakuretsuApp(ctk.CTk):
     def _on_platform_change(self, platform_name: str):
         if platform_name == "None":
             self.username_frame.pack_forget()
+            self.platform_share_btn.configure(text="Open Platform", state="disabled")
             return
         self.username_frame.pack(fill="x", pady=(0, 10))
         for platform in PLATFORMS.values():
@@ -309,6 +440,10 @@ class BakuretsuApp(ctk.CTk):
                 self.username_entry.delete(0, "end")
                 if saved:
                     self.username_entry.insert(0, saved)
+                self.platform_share_btn.configure(
+                    text=f"Open {platform.name}",
+                    state="normal" if self.generated_card else "disabled",
+                )
 
     def _on_size_change(self, preset_name: str):
         preset = get_preset(preset_name)
@@ -373,6 +508,9 @@ class BakuretsuApp(ctk.CTk):
         if self.mode_var.get() == "Review Card" and not self.review_text.get("1.0", "end").strip():
             messagebox.showerror("Validation Error", "Please enter a review.")
             return False
+        if self.mode_var.get() == "Top List" and len(self.collage_items) < 2:
+            messagebox.showerror("Validation Error", "Add at least 2 items to the list.")
+            return False
         return True
 
     def _generate(self):
@@ -398,9 +536,16 @@ class BakuretsuApp(ctk.CTk):
         elif mode == "Star Review":
             kwargs.update(stars=self.stars_var.get())
             fn = create_star_card
-        else:
+        elif mode == "Score Card":
             kwargs.update(score=self.sc_score_var.get())
             fn = create_score_card
+        else:
+            kwargs.pop("cover_image", None)
+            kwargs.update(
+                entries=[dict(item) for item in self.collage_items],
+                subtitle=self.subtitle_entry.get().strip(),
+            )
+            fn = create_collage_card
 
         def work():
             try:
@@ -416,8 +561,54 @@ class BakuretsuApp(ctk.CTk):
         self.generated_card = card
         self.generate_btn.configure(state="normal")
         self.save_btn.configure(state="normal")
+        if clipboard.is_supported():
+            self.copy_btn.configure(state="normal")
+        self.x_share_btn.configure(state="normal")
+        if self._platform_key() != "none":
+            self.platform_share_btn.configure(state="normal")
         self.status.configure(text="Card generated!", text_color="#22c55e")
         self._update_preview()
+
+    # ---------- share ----------
+
+    def _copy_card(self) -> bool:
+        if not self.generated_card:
+            return False
+        if clipboard.copy_image(self.generated_card):
+            self.status.configure(text="Image copied to clipboard!", text_color="#22c55e")
+            return True
+        self.status.configure(text="Clipboard copy failed on this system", text_color="#ef4444")
+        return False
+
+    def _share_text(self) -> str:
+        title = self.title_entry.get().strip()
+        mode = self.mode_var.get()
+        if mode == "Review Card":
+            return f"{title} - {self.score_var.get():g}/10"
+        if mode == "Star Review":
+            return f"{title} - {self.stars_var.get():g}/5 stars"
+        if mode == "Score Card":
+            return f"{title} - {self.sc_score_var.get():g}/10"
+        return title
+
+    def _share_on_x(self):
+        if self._copy_card():
+            self.status.configure(
+                text="Image copied! Paste it (Ctrl+V) into your post", text_color="#22c55e"
+            )
+        webbrowser.open(f"https://twitter.com/intent/tweet?text={quote(self._share_text())}")
+
+    def _share_on_platform(self):
+        platform_key = self._platform_key()
+        for platform in PLATFORMS.values():
+            if platform.key == platform_key and platform.search_url:
+                if self._copy_card():
+                    self.status.configure(
+                        text=f"Image copied! Paste it into your {platform.name} review",
+                        text_color="#22c55e",
+                    )
+                webbrowser.open(platform.share_link(self.title_entry.get().strip()))
+                return
 
     def _on_generation_error(self, exc: Exception):
         self._generating = False
@@ -434,9 +625,12 @@ class BakuretsuApp(ctk.CTk):
             return
         title = self.title_entry.get().strip()
         safe = "".join(c for c in title if c.isalnum() or c in " -_").strip().replace(" ", "_")
-        suffix = {"Review Card": "_review", "Star Review": "_star_review", "Score Card": "_score_card"}[
-            self.mode_var.get()
-        ]
+        suffix = {
+            "Review Card": "_review",
+            "Star Review": "_star_review",
+            "Score Card": "_score_card",
+            "Top List": "_top_list",
+        }[self.mode_var.get()]
         out_dir = Path(self.settings.output_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
         filepath = filedialog.asksaveasfilename(

@@ -25,6 +25,12 @@ class PlatformSpec:
     name: str  # display name written on cards
     accent: RGB
     draw_logo: Callable[[int], Image.Image]
+    search_url: str = ""  # {query} is replaced with the URL-encoded title
+
+    def share_link(self, title: str) -> str:
+        from urllib.parse import quote
+
+        return self.search_url.format(query=quote(title)) if self.search_url else ""
 
     def logo(self, size: int) -> Image.Image:
         """User-provided PNG override if present, else the drawn logo."""
@@ -53,18 +59,21 @@ PLATFORMS: dict[str, PlatformSpec] = {
         name="Backloggd",
         accent=(139, 92, 246),
         draw_logo=logos.draw_backloggd,
+        search_url="https://backloggd.com/search/games/{query}/",
     ),
     "letterboxd": PlatformSpec(
         key="letterboxd",
         name="Letterboxd",
         accent=(255, 128, 0),
         draw_logo=logos.draw_letterboxd,
+        search_url="https://letterboxd.com/search/{query}/",
     ),
     "myanimelist": PlatformSpec(
         key="myanimelist",
         name="MyAnimeList",
         accent=(46, 81, 162),
         draw_logo=logos.draw_myanimelist,
+        search_url="https://myanimelist.net/search/all?q={query}",
     ),
 }
 
