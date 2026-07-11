@@ -15,6 +15,7 @@ from bakuretsu.platforms import PLATFORMS
 from bakuretsu.settings import ATTRIBUTION_STYLES, AppSettings
 from bakuretsu.sizes import get_preset, preset_names
 from bakuretsu.themes import THEMES, get_theme, theme_names
+from bakuretsu.ui.preview import PanZoomPreview
 from bakuretsu.ui.settings_dialog import SettingsDialog
 from bakuretsu.ui.widgets import ColorButton, section_label
 from bakuretsu.utils.colors import hex_to_rgb
@@ -250,13 +251,14 @@ class BakuretsuApp(ctk.CTk):
         self.preview_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 16))
         self.preview_frame.grid_rowconfigure(0, weight=1)
         self.preview_frame.grid_columnconfigure(0, weight=1)
-        self.preview_label = ctk.CTkLabel(
-            self.preview_frame, text="Click 'Generate Card' to preview",
-            font=ctk.CTkFont(size=16), text_color="gray",
-        )
-        self.preview_label.grid(row=0, column=0)
+        self.preview = PanZoomPreview(self.preview_frame)
+        self.preview.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
 
-        self.status = ctk.CTkLabel(self.right, text="Ready", font=ctk.CTkFont(size=12), text_color="gray")
+        self.status = ctk.CTkLabel(
+            self.right,
+            text="Ready  —  drag to pan · scroll to zoom · double-click to fit",
+            font=ctk.CTkFont(size=12), text_color="gray",
+        )
         self.status.grid(row=2, column=0, sticky="w", padx=20, pady=(0, 8))
 
     # ---------- events ----------
@@ -424,20 +426,8 @@ class BakuretsuApp(ctk.CTk):
         messagebox.showerror("Generation Error", str(exc))
 
     def _update_preview(self):
-        if not self.generated_card:
-            return
-        self.preview_frame.update()
-        max_w = max(200, self.preview_frame.winfo_width() - 40)
-        max_h = max(200, self.preview_frame.winfo_height() - 40)
-        ratio = self.generated_card.width / self.generated_card.height
-        if max_w / max_h > ratio:
-            new_h, new_w = max_h, int(max_h * ratio)
-        else:
-            new_w, new_h = max_w, int(max_w / ratio)
-        self.preview_photo = ctk.CTkImage(
-            light_image=self.generated_card, dark_image=self.generated_card, size=(new_w, new_h)
-        )
-        self.preview_label.configure(image=self.preview_photo, text="")
+        if self.generated_card:
+            self.preview.set_image(self.generated_card)
 
     def _save(self):
         if not self.generated_card:
