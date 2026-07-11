@@ -1,87 +1,80 @@
 # Bakuretsu
 
-A personal toolkit for managing and enhancing game, movie, and anime reviews.
+My personal toolkit for the reviews I post on social media. I review games, movies, and anime on places like Backloggd and Letterboxd, and this app turns those reviews into clean, branded card images that are ready to share.
 
-The flagship tool is the **Review Card Generator** — branded review card
-images for sharing on social media alongside your Backloggd, Letterboxd, or
-MyAnimeList reviews.
-
-<img src="Readme%20images/1.gif" alt="Bakuretsu Review Card Generator UI Demo" width="700">
+<div align="center">
+<img src="Readme%20images/full_app.gif" alt="Bakuretsu full app demo: writing a review, picking a theme, and generating a card" width="850">
+</div>
 
 ---
 
-## Features
+## What it does
 
-- **Three card modes** — Review Card (title + cover + score + text), Star Review (textless ★ rating), and Score Card (framed cover + big score)
-- **Social media size presets** — one dropdown for X/Twitter, Instagram square/portrait/story, TikTok, Facebook, Reddit, Discord, YouTube thumbnail, Pinterest, or fully custom dimensions
-- **Adaptive layouts** — the review card automatically switches between landscape (cover left) and portrait/story (cover top) composition, and fonts scale with card size
-- **Full Arabic support** — review text, titles, and mixed Arabic/English render with correct letterform shaping and RTL alignment (not reversed, not disconnected)
-- **Platform branding** — Backloggd, Letterboxd, and MyAnimeList, with your username and a configurable credit line: `@username`, `Follow me on <platform>`, or `Posted on <platform> by @username`
-- **App settings** — save your usernames per platform, default theme/size/platform, and credit style once; the app fills them in every time (`⚙ Settings` in the top-left)
-- **20 themes** — 12 clean palettes + 8 decorated themes, all extensible
-- **Score color coding** — green/yellow/orange/red based on the score
-- **Covers from anywhere** — URL or local file, with graceful placeholder
+You type your review, pick a theme and a size, and Bakuretsu renders a polished card image with your cover art, score, and platform username on it. Three card modes are included:
+
+| Mode | What you get |
+|------|--------------|
+| **Review Card** | Title, cover, numeric score, and your full review text |
+| **Star Review** | Textless card with the cover and a star rating (0.5 to 5.0, half stars supported) |
+| **Score Card** | Minimal card: glowing framed cover, big score, corner brackets |
+
+Some example cards:
+
+<img src="Readme%20images/Omori.png" alt="Example review card for OMORI" width="550">
+
+<img src="Readme%20images/Planet_of_Lana_textless_review.png" alt="Star review card example" width="420"> <img src="Readme%20images/Planet_of_Lana_score_card.png" alt="Score card example" width="420">
 
 ## Themes
 
-**Palettes:** Bakuretsu Dark, Midnight Blue, Deep Purple, Ocean, Forest,
-Sunset, Monochrome, Crimson, Gold Luxe, Coffee, Paper Light, Mint Light
+20 themes ship with the app: 12 clean color palettes (Bakuretsu Dark, Midnight Blue, Deep Purple, Ocean, Forest, Sunset, Monochrome, Crimson, Gold Luxe, Coffee, Paper Light, Mint Light) plus 8 decorated themes with hand-drawn artwork:
 
-**Decorated themes:**
+- **Ramadan** golden crescent, hanging lanterns, starfield, mosque skyline
+- **Exams Time** chalk formulas, F-graded papers, coffee mug, pencil
+- **Retrowave** banded sunset sun and a perspective neon grid
+- **Sakura** blossom branch and drifting petals
+- **Halloween** glowing moon, bats, jack-o'-lanterns, spiderweb
+- **Winter** snowflakes, falling snow, layered drifts
+- **Arcade** marching pixel invaders, hearts, coins, CRT scanlines
+- **Cinema** film strips and spotlight beams
 
-| Theme | Artwork |
-|-------|---------|
-| **Ramadan** | Golden crescent, hanging lanterns, starfield, mosque skyline |
-| **Exams Time** | Chalk formulas, F-graded papers, coffee mug, pencil |
-| **Retrowave** | Banded sunset sun, perspective neon grid |
-| **Sakura** | Blossom branch, drifting petals |
-| **Halloween** | Glowing moon, bats, jack-o'-lanterns, spiderweb |
-| **Winter** | Snowflakes, falling snow, layered drifts |
-| **Arcade** | Marching pixel invaders, hearts, coins, CRT scanlines |
-| **Cinema** | Film strips, spotlight beams |
+<div align="center">
+<img src="Readme%20images/themes.gif" alt="Browsing the theme dropdown and previewing different themes" width="850">
+</div>
 
-## Examples
+Every theme's colors can still be tweaked with the custom color pickers, and more palette examples are here:
 
-Review card, star review, and score card:
+<img src="Readme%20images/Styles.png" alt="Review cards in different color palettes" width="650">
 
-<img src="Readme%20images/Omori.png" alt="Example review card for OMORI game showing cover art, 9.0 score, review text, and Backloggd branding" width="550">
+## Free preview navigation
 
-<img src="Readme%20images/Planet_of_Lana_textless_review.png" alt="Star review card example" width="450"> <img src="Readme%20images/Planet_of_Lana_score_card.png" alt="Score card example" width="450">
+The preview area works like an infinite canvas, so what you see is exactly what gets saved:
 
-More palette examples:
+- **Drag** with the mouse to move around the card freely
+- **Scroll** to zoom in and out, anchored right where your cursor points
+- **Double-click** (or the Fit button) to fit the whole card back in view
+- **1:1** shows the card at its true export size, pixel for pixel
 
-<img src="Readme%20images/Styles.png" alt="Multiple review card examples showing different color palette styles" width="650">
+## Sizes for every platform
 
-## Quick Start
+One dropdown switches the card dimensions to presets for X/Twitter, Instagram (square, portrait, story), TikTok, Facebook, Reddit, Discord, YouTube thumbnails, and Pinterest, or you can type any custom width and height. The layout adapts on its own: landscape cards put the cover on the left, portrait and story cards stack it on top, and fonts scale with the card size.
 
-```bash
-pip install -r requirements.txt
-python main.py
-```
+## Arabic support
 
-Or programmatically:
+I write reviews in Arabic too, so the text engine handles it properly: letters come out connected and in the right direction (not reversed), lines align to the right, and mixing Arabic with English words in the same sentence just works.
 
-```python
-from bakuretsu import create_review_card, create_star_card, create_score_card
+## Platforms and settings
 
-create_review_card(
-    title="OMORI",
-    score=9.0,
-    review_text="A hauntingly beautiful RPG...",   # Arabic works too
-    cover_image="https://example.com/omori.jpg",
-    platform="backloggd",                          # backloggd / letterboxd / myanimelist
-    platform_username="YourUsername",
-    attribution_style="follow",                    # handle / follow / posted
-    theme="Ramadan",
-    size="Instagram Square",                       # any preset name, or width=/height=
-    output_path="output/omori.png",
-)
+Cards can carry your identity on Backloggd, Letterboxd, or MyAnimeList with a logo and a credit line in one of three styles: just `@username`, `Follow me on <platform>`, or `Posted on <platform> by @username`.
 
-create_star_card(title="OMORI", stars=4.5, output_path="output/omori_stars.png")
-create_score_card(title="OMORI", score=9.0, output_path="output/omori_score.png")
-```
+Open the Settings dialog once, save your usernames and preferred defaults (platform, theme, size, output folder), and the app fills everything in automatically every time you make a card.
 
-## Project Structure
+<div align="center">
+<img src="Readme%20images/settings.gif" alt="Settings dialog with usernames, credit line styles, and defaults" width="500">
+</div>
+
+## For tinkerers
+
+The code is organized so adding things is easy:
 
 ```
 main.py                     # UI entry point
@@ -96,32 +89,62 @@ bakuretsu/
 │   ├── registry.py         # theme registry (palette + decoration)
 │   └── decorations/        # one module per decorated theme
 ├── rendering/              # base renderer + one module per card mode
-├── ui/                     # customtkinter app + settings dialog
+├── ui/                     # customtkinter app + pan/zoom preview
 └── utils/                  # fonts, colors, images, Arabic text shaping
 ```
 
-**Adding a palette:** add an entry to `themes/palettes.py` and one line to
-`themes/registry.py`. **Adding a decorated theme:** also drop a
-`draw(card, style)` module in `themes/decorations/`. **Adding a platform:**
-one `PlatformSpec` in `platforms/registry.py` (plus an optional logo drawer
-or a PNG in `assets/logos/`). **Adding a size preset:** one line in
-`sizes.py`. Everything shows up in the UI automatically.
+A new palette is one dict entry, a new decorated theme is one `draw(card, style)` module, a new platform is one `PlatformSpec`, and a new size preset is one line. The UI picks all of them up automatically.
 
-## Settings
+It also works from code:
 
-`⚙ Settings` stores to `settings.json` (gitignored):
+```python
+from bakuretsu import create_review_card
 
-- Your username per platform — auto-filled whenever you pick that platform
-- Credit line style — `@username` only, "Follow me on ...", or "Posted on ... by ..."
-- Default platform, theme, card size, and output folder
+create_review_card(
+    title="OMORI",
+    score=9.0,
+    review_text="A hauntingly beautiful RPG...",
+    cover_image="https://example.com/omori.jpg",
+    platform="backloggd",
+    platform_username="YourUsername",
+    attribution_style="follow",
+    theme="Ramadan",
+    size="Instagram Square",
+    output_path="output/omori.png",
+)
+```
 
-## Coming Soon
+## Coming soon
 
-- **The "Cross-Platform" Text Formatter** — format your reviews for multiple platforms at once
-- **The "Can I Beat It?" Calculator** — estimate completion time based on your gaming habits
-- **The "Deal Sniper"** — track prices and find the best deals for your wishlist
+- **The "Cross-Platform" Text Formatter**: format your reviews for multiple platforms at once
+- **The "Can I Beat It?" Calculator**: estimate completion time based on your gaming habits
+- **The "Deal Sniper"**: track prices and find the best deals for your wishlist
 - *...and more*
+
+## Download and start
+
+You need Python 3.10+ installed, then:
+
+```bash
+# 1. Grab the code
+git clone https://github.com/MegumiinUwU/Bakuretsu.git
+cd Bakuretsu
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Launch the app
+python main.py
+```
+
+Generated cards are saved wherever you choose, with the `output/` folder as the default.
 
 ## License
 
 See [LICENSE](LICENSE) for details.
+
+---
+
+<div align="center">
+<img src="https://count.getloli.com/@auto-pipeline-ai?theme=rule34" alt="visitor counter">
+</div>
