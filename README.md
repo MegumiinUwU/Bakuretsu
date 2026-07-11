@@ -18,12 +18,6 @@ You type your review, pick a theme and a size, and Bakuretsu renders a polished 
 | **Star Review** | Textless card with the cover and a star rating (0.5 to 5.0, half stars supported) |
 | **Score Card** | Minimal card: glowing framed cover, big score, corner brackets |
 
-Some example cards:
-
-<img src="Readme%20images/Omori.png" alt="Example review card for OMORI" width="550">
-
-<img src="Readme%20images/Planet_of_Lana_textless_review.png" alt="Star review card example" width="420"> <img src="Readme%20images/Planet_of_Lana_score_card.png" alt="Score card example" width="420">
-
 ## Themes
 
 20 themes ship with the app: 12 clean color palettes (Bakuretsu Dark, Midnight Blue, Deep Purple, Ocean, Forest, Sunset, Monochrome, Crimson, Gold Luxe, Coffee, Paper Light, Mint Light) plus 8 decorated themes with hand-drawn artwork:
@@ -41,9 +35,7 @@ Some example cards:
 <img src="Readme%20images/themes.gif" alt="Browsing the theme dropdown and previewing different themes" width="850">
 </div>
 
-Every theme's colors can still be tweaked with the custom color pickers, and more palette examples are here:
-
-<img src="Readme%20images/Styles.png" alt="Review cards in different color palettes" width="650">
+Every theme's colors can still be tweaked with the custom color pickers.
 
 ## Free preview navigation
 
@@ -146,5 +138,5 @@ See [LICENSE](LICENSE) for details.
 ---
 
 <div align="center">
-<img src="https://count.getloli.com/@auto-pipeline-ai?theme=rule34" alt="visitor counter">
+<img src="https://count.getloli.com/@megumiinuwu-bakuretsu?theme=rule34" alt="visitor counter">
 </div>
