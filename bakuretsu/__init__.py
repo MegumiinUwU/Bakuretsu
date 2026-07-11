@@ -7,9 +7,16 @@ Public API:
     create_score_card(...)    Minimal cover + big score card
 """
 
-from bakuretsu.api import create_review_card, create_star_card, create_score_card
+from bakuretsu.api import (
+    create_collage_card,
+    create_review_card,
+    create_score_card,
+    create_star_card,
+)
 from bakuretsu.models import (
     CardStyle,
+    CollageData,
+    CollageEntry,
     ContentType,
     ReviewData,
     ScoreCardData,
@@ -17,16 +24,19 @@ from bakuretsu.models import (
 )
 from bakuretsu.settings import AppSettings
 
-__version__ = "2.0.0"
+__version__ = "2.1.0"
 
 __all__ = [
     "create_review_card",
     "create_star_card",
     "create_score_card",
+    "create_collage_card",
     "CardStyle",
     "ContentType",
     "ReviewData",
     "StarReviewData",
     "ScoreCardData",
+    "CollageData",
+    "CollageEntry",
     "AppSettings",
 ]

@@ -25,12 +25,19 @@ from PIL import Image
 
 from bakuretsu.models import (
     CardStyle,
+    CollageData,
+    CollageEntry,
     ContentType,
     ReviewData,
     ScoreCardData,
     StarReviewData,
 )
-from bakuretsu.rendering import ReviewCardRenderer, ScoreCardRenderer, StarCardRenderer
+from bakuretsu.rendering import (
+    CollageCardRenderer,
+    ReviewCardRenderer,
+    ScoreCardRenderer,
+    StarCardRenderer,
+)
 from bakuretsu.sizes import get_preset
 from bakuretsu.themes import get_theme
 from bakuretsu.utils.colors import hex_to_rgb
@@ -142,6 +149,47 @@ def create_star_card(
 
 # Backwards-compatible alias for the old function name.
 create_textless_review_card = create_star_card
+
+
+def create_collage_card(
+    title: str,
+    entries: list,
+    subtitle: str = "",
+    content_type: str = "game",
+    platform: str = "none",
+    platform_username: str = "",
+    attribution_style: str = "handle",
+    theme: Optional[str] = None,
+    size: Optional[str] = None,
+    width: Optional[int] = None,
+    height: Optional[int] = None,
+    style: Optional[CardStyle] = None,
+    output_path: Optional[Union[str, Path]] = None,
+) -> Image.Image:
+    """Generate a Top List / Year in Review collage card.
+
+    ``entries`` is an ordered list (rank 1 first) of CollageEntry objects
+    or dicts with keys: title, score, and optional cover_image.
+    """
+    normalized = [
+        entry if isinstance(entry, CollageEntry) else CollageEntry(
+            title=entry["title"],
+            score=float(entry["score"]),
+            cover_image=entry.get("cover_image"),
+        )
+        for entry in entries
+    ]
+    data = CollageData(
+        title=title,
+        entries=normalized,
+        subtitle=subtitle,
+        content_type=ContentType(content_type.lower()),
+        platform=platform,
+        platform_username=platform_username,
+        attribution_style=attribution_style,
+    )
+    renderer = CollageCardRenderer(_style_or_build(style, theme, size, width, height))
+    return renderer.render(data, output_path)
 
 
 def create_score_card(
